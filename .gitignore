@@ -26,3 +26,9 @@
 *.exe
 *.out
 *.app
+
+_build
+venv
+.idea
+*.pyc
+*.egg-info
