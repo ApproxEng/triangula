@@ -7,6 +7,12 @@ from setuptools import setup
 # 'python setup.py upload_sphinx'. Both uploads require 'python setup.py register' to be run, and will
 # only work for Tom as they need the pypi account credentials.
 
+# Note - on OSX (and others) to install pygame requires libSDL. On OSX this can be installed with
+# 'brew install sdl'. PyGame depends on SDL and not on SDL2. The actual version fetched from mercurial
+# may vary, when I did this it pulled back 1.9.2a0 but there's no guarantee this will happen. To
+# install pygame in a virtualenv, which makes life much easier, use something like:
+# 'yes y | pip install hg+http://bitbucket.org/pygame/pygame' from within the virtualenv you're using.
+
 setup(
     name='triangula',
     version='0.1',
@@ -17,8 +23,9 @@ setup(
     author_email='tomoinn@gmail.com',
     license='GPL',
     packages=['triangula'],
-    install_requires=[],
+    install_requires=['pygame==1.9.2a0'],
     include_package_data=True,
     test_suite='nose.collector',
     tests_require=['nose'],
+    dependency_links=['hg+http://bitbucket.org/pygame/pygame#egg=pygame-1.9.2a0'],
     zip_safe=False)
