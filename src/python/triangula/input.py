@@ -22,7 +22,7 @@ class SixAxis():
 
     Consuming code can get the current position of any of the sticks from this class through the `axes` instance
     property. This contains a list of :class:`triangula.input.SixAxis.Axis` objects, one for each distinct axis on the
-    controller.
+    controller. The list of axes is, in order: left x, left y, right x, right y.
     """
 
     BUTTON_SELECT = 0  #: The Select button
@@ -43,7 +43,7 @@ class SixAxis():
     BUTTON_SQUARE = 15  #: Square
     BUTTON_PS = 16  #: PS button
 
-    def __init__(self, dead_zone=0.2):
+    def __init__(self, dead_zone=0.2, hot_zone=0.1, init_pygame=True):
         """
         Discover and initialise a PS3 SixAxis controller connected to this computer
 
@@ -53,30 +53,48 @@ class SixAxis():
             centre offset is lower in magnitude than this supplied value. Defaults to 0.2, which makes the PS3 analogue
             sticks easy to centre but still responsive to motion. The deadzone is applies to each axis independently, so
             e.g. moving the stick far right won't affect the deadzone for that sticks Y axis.
+        :param float hot_zone:
+            Creates a zone of maximum value, any readings from the sensor which are within this value of the max or min
+            values will be mapped to 1.0 and -1.0 respectively. This can be useful because, while the PS3 controllers
+            sticks have independent axes, they are constrained to move within a circle, so it's impossible to have e.g.
+            1.0,1.0 for both x and y axes. Setting this value to non-zero in effect partially squares the circle,
+            allowing for controls which require full range control. Setting this value to 1/sqrt(2) will create a square
+            zone of variability within the circular range of motion of the controller, with any stick motions outside
+            this square mapping to the maximum value for the respective axis. The value is actually scaled by the max
+            and min magnitude for upper and lower ranges respectively, so e.g. setting 0.5 will create a hot-zone at
+            above half the maximum value and below half the minimum value, and not at +0.5 and -0.5 (unless max and
+            min are 1.0 and -1.0 respectively). As with the dead zone, these are applied separately to each axis, so in
+            the case where the hot zone is set to 1/sqrt(2), a circular motion of the stick will map to x and y values
+            which trace the outline of a square of unit size, allowing for all values to be emitted from the stick.
+        :param boolean init_pygame:
+            Defaults to True; if set then pygame will be initialised with the appropriate properties to run headless, if
+            false then no pygame initialisation will be performed. If you pass False to this method you must have
+            already initialised pygame (there's no requirement to initialise the joystick subsystem, this is always
+            performed in this method, it's safe to run multiple times anyway)
         :return: an initialised link to an attached PS3 SixAxis controller
         """
-
-        environ['SDL_VIDEODRIVER'] = 'dummy'
-        pygame.init()
-        pygame.display.set_mode((1, 1))
+        if init_pygame:
+            environ['SDL_VIDEODRIVER'] = 'dummy'
+            pygame.init()
+            pygame.display.set_mode((1, 1))
         pygame.joystick.init()
-        self.sixaxis = None
+        sixaxis = None
         for joystick_index in range(pygame.joystick.get_count()):
             joystick = pygame.joystick.Joystick(joystick_index)
             joystick.init()
             if joystick.get_name() == 'PLAYSTATION(R)3 Controller':
-                self.sixaxis = joystick
+                sixaxis = joystick
                 self.active_index = joystick_index
                 break
-        if self.sixaxis is None:
+        if sixaxis is None:
             raise ValueError('No PS3 controller detected')
         pg_event.set_allowed(None)
         pg_event.set_allowed([JOYAXISMOTION, JOYBUTTONDOWN])
         pg_event.clear()
-        self.axes = [SixAxis.Axis('left_x', dead_zone=dead_zone),
-                     SixAxis.Axis('left_y', dead_zone=dead_zone, invert=True),
-                     SixAxis.Axis('right_x', dead_zone=dead_zone),
-                     SixAxis.Axis('right_y', dead_zone=dead_zone, invert=True)]
+        self.axes = [SixAxis.Axis('left_x', dead_zone=dead_zone, hot_zone=hot_zone),
+                     SixAxis.Axis('left_y', dead_zone=dead_zone, hot_zone=hot_zone, invert=True),
+                     SixAxis.Axis('right_x', dead_zone=dead_zone, hot_zone=hot_zone),
+                     SixAxis.Axis('right_y', dead_zone=dead_zone, hot_zone=hot_zone, invert=True)]
         self.button_handlers = []
 
     def __str__(self):
@@ -107,12 +125,16 @@ class SixAxis():
             called with the integer code for the button as the sole argument.
         :param [int] buttons: a list or one or more buttons which should trigger the handler when pressed. Buttons are
             specified as ints, for convenience the PS3 button assignments are mapped to names in SixAxis, i.e.
-            SixAxis.BUTTON_CIRCLE. This includes the buttons in each of the analogue sticks.
+            SixAxis.BUTTON_CIRCLE. This includes the buttons in each of the analogue sticks. A bare int value is also
+            accepted here and will be treated as if a single element list was supplied.
         :return: a no-arg function which can be used to remove this registration
         """
         mask = 0
-        for button in buttons:
-            mask += 1 << button
+        if isinstance(buttons, list):
+            for button in buttons:
+                mask += 1 << button
+        else:
+            mask += 1 << buttons
         h = {'handler': handler,
              'mask': mask}
         self.button_handlers.append(h)
@@ -135,7 +157,7 @@ class SixAxis():
     class Axis():
         """A single analogue axis on the SixAxis controller"""
 
-        def __init__(self, name, invert=False, dead_zone=0.0):
+        def __init__(self, name, invert=False, dead_zone=0.0, hot_zone=1.0):
             self.name = name
             self.centre = 0.0
             self.max = 0.9
@@ -143,24 +165,35 @@ class SixAxis():
             self.value = 0.0
             self.invert = invert
             self.dead_zone = dead_zone
+            self.hot_zone = hot_zone
 
         def corrected_value(self):
             """
-            Get a centre-compensated, scaled, value for the axis, taking any dead-zone into account. The value will scale
-            from 0.0 at the edge of the dead-zone to 1.0 (positive) or -1.0 (negative) at the extreme position of the
-            controller. The axis will auto-calibrate for maximum value, initially it will behave as if the highest possible
-            value from the hardware is 0.9 in each direction, and will expand this as higher values are observed. This is
-            scaled by this function and should always return 1.0 or -1.0 at the extreme ends of the axis.
+            Get a centre-compensated, scaled, value for the axis, taking any dead-zone into account. The value will
+            scale from 0.0 at the edge of the dead-zone to 1.0 (positive) or -1.0 (negative) at the extreme position of
+            the controller or the edge of the hot zone, if defined as other than 1.0. The axis will auto-calibrate for
+            maximum value, initially it will behave as if the highest possible value from the hardware is 0.9 in each
+            direction, and will expand this as higher values are observed. This is scaled by this function and should
+            always return 1.0 or -1.0 at the extreme ends of the axis.
 
             :return: a float value, negative to the left or down and ranging from -1.0 to 1.0
             """
-            result = 0
-            if abs(self.value) <= self.dead_zone:
-                return 0
-            if self.value >= self.centre:
-                result = (self.value - (self.centre + self.dead_zone)) / (self.max - (self.centre + self.dead_zone))
+
+            centred = self.value - self.centre
+            if abs(centred) <= self.dead_zone:
+                return 0.0
+            elif centred > 0 and self.value > self.max - (self.hot_zone * self.max):
+                return 1.0
+            elif centred < 0 and self.value < self.min - (self.hot_zone * self.min):
+                return -1.0
+
+            if centred > 0:
+                top_range = self.max - (self.hot_zone * self.max + self.dead_zone)
+                result = centred / top_range
             else:
-                result = (self.value - (self.centre - self.dead_zone)) / ((self.centre - self.dead_zone) - self.min)
+                bottom_range = self.dead_zone - (self.min - self.hot_zone * self.min)
+                result = centred / bottom_range
+
             if self.invert:
                 result = -result
             return result
@@ -194,16 +227,16 @@ if __name__ == '__main__':
     from input import SixAxis
     import time
 
-    controller = SixAxis()
+    controller = SixAxis(dead_zone=0.2, hot_zone=0.1, init_pygame=True)
 
 
     def handler(button):
         print 'Button! {}'.format(button)
 
 
-    controller.register_button_handler(handler, [SixAxis.BUTTON_CIRCLE])
-    controller.register_button_handler(controller.reset_axis_calibration, [SixAxis.BUTTON_START])
-    controller.register_button_handler(controller.set_axis_centres, [SixAxis.BUTTON_SELECT])
+    controller.register_button_handler(handler, SixAxis.BUTTON_CIRCLE)
+    controller.register_button_handler(controller.reset_axis_calibration, SixAxis.BUTTON_START)
+    controller.register_button_handler(controller.set_axis_centres, SixAxis.BUTTON_SELECT)
 
     current_milli_time = lambda: int(round(time.time() * 1000))
     last_time = current_milli_time()
