@@ -1,13 +1,9 @@
 __author__ = 'tom'
-from math import cos, sin
-
-PI = 3.1415926535
-
-
-# TODO - actually get the value for PI...
+from math import cos, sin, pi, radians, sqrt
+import operator
 
 
-class HoloChassis():
+class HoloChassis:
     """
     An assembly of wheels at various positions and angles which can be driven independently to create a holonomic drive
     system. A holonomic system is one where number of degrees of freedom in the system is equal to the number of
@@ -25,7 +21,7 @@ class HoloChassis():
         """
         self.wheels = wheels
 
-    def get_wheel_speeds(self, dx, dy, rotation):
+    def get_wheel_speeds(self, dx, dy, rotation, x_origin=0, y_origin=0):
         """
         Calculate speeds to drive each wheel in the chassis at to attain the specified rotation / translation 3-vector.
 
@@ -36,6 +32,10 @@ class HoloChassis():
         :param float rotation:
             Desired anguar velocity, specified in degrees per second where positive values correspond to clockwise
             rotation of the chassis when viewed from above.
+        :param float x_origin:
+            Optional, can define the centre of rotation to be something other than 0,0
+        :param float y_origin:
+            Optional, can define the centre of rotation to be something other than 0,0
         :return:
             A sequence of floats defining the revolutions per second required to obtain the appropriate overall motion.
             The sequence contains one speed for each previously specified wheel, there is no limiting in operation so
@@ -44,7 +44,10 @@ class HoloChassis():
             a better target vector.
         """
 
-    class OmniWheel():
+        def velocity_at(x, y):
+            return Vector2(x, y)
+
+    class OmniWheel:
         """
         Defines a single omni-wheel within a chassis assembly. Omni-wheels are wheels formed from rollers, where the
         motion of the roller is perpendicular to the motion of the primary wheel. This is distinct from a mechanum wheel
@@ -97,7 +100,151 @@ class HoloChassis():
                 self.dy = dy
             elif angle is not None and radius is not None and dx is None and dy is None:
                 # Specify based on angle from positive Y axis and radius """
-                self.dx = sin(angle * 2 * PI / 360) * 2 * PI * radius
-                self.dy = cos(angle * 2 * PI / 360) * 2 * PI * radius
+                angle_rads = radians(angle)
+                circumference = 2 * pi * radius
+                self.dx = sin(angle_rads) * circumference
+                self.dy = cos(angle_rads) * circumference
             else:
                 raise ValueError('Must specify exactly one of angle and radius or dx,dy vector')
+
+
+class Vector2:
+    """
+    Two dimensional vector, used internally in many places. Substantially derived from original project found at
+    http://pyeuclid.googlecode.com/svn/trunk/euclid.py
+    """
+
+    def __init__(self, x=0, y=0):
+        """
+        :param float x:
+            X component
+        :param float y:
+            Y component
+        """
+        self.x = x
+        self.y = y
+
+    def __copy__(self):
+        return self.__class__(self.x, self.y)
+
+    copy = __copy__
+
+    def __eq__(self, other):
+        if isinstance(other, Vector2):
+            return self.x == other.x and self.y == other.y
+        else:
+            assert hasattr(other, '__len__') and len(other) == 2
+            return self.x == other[0] and self.y == other[1]
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+    def __nonzero__(self):
+        return self.x != 0 or self.y != 0
+
+    def __len__(self):
+        return 2
+
+    def dot(self, other):
+        assert isinstance(other, Vector2)
+        return self.x * other.x + self.y * other.y
+
+    def cross(self):
+        return Vector2(self.y, -self.x)
+
+    def __abs__(self):
+        return sqrt(self.x ** 2 + self.y ** 2)
+
+    magnitude = __abs__
+
+    def magnitude_squared(self):
+        return self.x ** 2 + \
+               self.y ** 2
+
+    def normalized(self):
+        d = self.magnitude()
+        if d:
+            return Vector2(self.x / d,
+                           self.y / d)
+        return self.copy()
+
+    def __add__(self, other):
+        if isinstance(other, Vector2):
+            return Vector2(self.x + other.x, self.y + other.y)
+        else:
+            assert hasattr(other, '__len__') and len(other) == 2
+            return Vector2(self.x + other[0], self.y + other[1])
+
+    __radd__ = __add__
+
+    def __iadd__(self, other):
+        if isinstance(other, Vector2):
+            self.x += other.x
+            self.y += other.y
+        else:
+            self.x += other[0]
+            self.y += other[1]
+        return self
+
+    def __getitem__(self, key):
+        return (self.x, self.y)[key]
+
+    def __setitem__(self, key, value):
+        l = [self.x, self.y]
+        l[key] = value
+        self.x, self.y = l
+
+    def __sub__(self, other):
+        if isinstance(other, Vector2):
+            return Vector2(self.x - other.x, self.y - other.y)
+        else:
+            assert hasattr(other, '__len__') and len(other) == 2
+            return Vector2(self.x - other[0], self.y - other[1])
+
+    def __rsub__(self, other):
+        if isinstance(other, Vector2):
+            return Vector2(other.x - self.x, other.y - self.y)
+        else:
+            assert hasattr(other, '__len__') and len(other) == 2
+            return Vector2(other.x - self[0], other.y - self[1])
+
+    def __mul__(self, other):
+        assert type(other) in (int, long, float)
+        return Vector2(self.x * other, self.y * other)
+
+    __rmul__ = __mul__
+
+    def __imul__(self, other):
+        assert type(other) in (int, long, float)
+        self.x *= other
+        self.y *= other
+        return self
+
+    def __div__(self, other):
+        assert type(other) in (int, long, float)
+        return Vector2(operator.div(self.x, other), operator.div(self.y, other))
+
+    def __rdiv__(self, other):
+        assert type(other) in (int, long, float)
+        return Vector2(operator.div(other, self.x), operator.div(other, self.y))
+
+    def __floordiv__(self, other):
+        assert type(other) in (int, long, float)
+        return Vector2(operator.floordiv(self.x, other), operator.floordiv(self.y, other))
+
+    def __rfloordiv__(self, other):
+        assert type(other) in (int, long, float)
+        return Vector2(operator.floordiv(other, self.x), operator.floordiv(other, self.y))
+
+    def __truediv__(self, other):
+        assert type(other) in (int, long, float)
+        return Vector2(operator.truediv(self.x, other), operator.truediv(self.y, other))
+
+    def __rtruediv__(self, other):
+        assert type(other) in (int, long, float)
+        return Vector2(operator.truediv(other, self.x), operator.truediv(other, self.y))
+
+    def __neg__(self):
+        return Vector2(-self.x, -self.y)
+
+    __pos__ = __copy__
