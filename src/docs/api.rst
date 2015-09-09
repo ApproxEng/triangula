@@ -22,3 +22,13 @@ expressed as revolutions per second.
 
 .. autoclass:: triangula.chassis.HoloChassis
     :members:
+
+Sensor Inputs
+-------------
+
+Classes for reading sensor data are contained in this module. The current set of sensors is relatively limited: the
+encoders attached to each wheel provide absolute position information and a gyro / compass fusion provides orientation
+but we plan to add more sensors such as LIDAR and other range-finder mechanisms once the basic chassis is completed.
+
+.. automodule:: triangula.sensors
+    :members:

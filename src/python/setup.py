@@ -21,7 +21,7 @@ setup(
     url='https://github.com/tomoinn/triangula/',
     author='Tom Oinn',
     author_email='tomoinn@gmail.com',
-    license='GPL',
+    license='ASL2.0',
     packages=['triangula'],
     install_requires=['pygame==1.9.2a0'],
     include_package_data=True,
