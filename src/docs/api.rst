@@ -12,3 +12,13 @@ elsewhere in your project you might need to go and change this.
 .. autoclass:: triangula.input.SixAxis
     :members:
 
+Low-level Motion Dynamics
+-------------------------
+
+The HoloChassis class specifies a chassis defined as an arrangement of various size omni-wheels. Wheels can be added to
+the chassis object with arbitrary orientation and position, and wheels of multiple sizes can be specified. This class
+is then responsible for converting an arbitrary motion 3-vector (x, y, rotation) into target speeds for each wheel
+expressed as revolutions per second.
+
+.. autoclass:: triangula.chassis.HoloChassis
+    :members:
