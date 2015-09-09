@@ -1,10 +1,10 @@
-__author__ = 'tom'
-
 import pygame.event as pg_event
 
 from pygame import JOYAXISMOTION, JOYBUTTONDOWN
 from os import environ
 import pygame
+
+__author__ = 'tom'
 
 
 class SixAxis():

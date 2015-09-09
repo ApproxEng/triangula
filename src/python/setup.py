@@ -23,7 +23,7 @@ setup(
     author_email='tomoinn@gmail.com',
     license='ASL2.0',
     packages=['triangula'],
-    install_requires=['pygame==1.9.2a0'],
+    install_requires=['pygame==1.9.2a0', 'euclid==0.1'],
     include_package_data=True,
     test_suite='nose.collector',
     tests_require=['nose'],
