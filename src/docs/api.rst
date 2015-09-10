@@ -1,6 +1,9 @@
 API Documentation
 =================
 
+Once the necessary native code and other supporting configuration has been set up, the following modules provide access
+to Triangula's hardware.
+
 PlayStation3 Controller Support
 -------------------------------
 
