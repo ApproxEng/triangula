@@ -131,7 +131,7 @@ void setup() {
  */
 void loop() {
   // Copy values to inputs for PIDs, disabling interrupts while we do it otherwise we risk
-  // copying a volatile value half=way through its update.
+  // copying a volatile value half-way through its update.
   cli();
   input_a = vel_a;
   input_b = vel_b;
