@@ -1,6 +1,12 @@
 __author__ = 'tom'
 # Classes representing sensors on the robot
 
+from math import pi
+
+import os
+import RTIMU
+
+
 class WheelEncoders():
     """
     Class to read absolute values of the quadrature encoders attached to the drive spindle on each wheel motor. These
@@ -24,16 +30,51 @@ class WheelEncoders():
             A sequence of integers containing the current absolute positions for each wheel
         """
 
-class Compass():
+
+class IMU():
     """
-    Class to read the fused compass / gyro contained in the MPU6050 breakout board. Uses the RTIMULib library to set up
-    the chip and read its values.
+    Class to read the fused compass / gyro / pressure sensor contained in the MPU6050 breakout board. Uses the
+    RTIMULib library to set up the chip and read its values.
     """
 
-    def __init__(self):
+    def __init__(self, settings_path='RTIMULib'):
         """
-        Create a new proxy to the compass, performing any necessary initialisation.
+        Create a new proxy to the IMU, performing any necessary initialisation.
         """
+        if not os.path.exists(settings_path + '.ini'):
+            print 'Settings file not found at {}, will be created'.format(settings_path + '.ini')
+        s = RTIMU.Settings(settings_path)
+        self.imu = RTIMU.RTIMU(s)
+        self.pressure = RTIMU.RTPressure(s)
+        print('IMU Name: ' + self.imu.IMUName())
+        print('Pressure Name: ' + self.pressure.pressureName())
+        if not self.imu.IMUInit():
+            raise StandardError('Unable to initialise IMU')
+        self.imu.setSlerpPower(0.02)
+        self.imu.setGyroEnable(True)
+        self.imu.setAccelEnable(True)
+        self.imu.setCompassEnable(True)
+        print('Initialised IMU')
+        self.bearing_zero = 0
+        self.data = None
+        self.update()
+
+    def update(self):
+        if self.imu.IMURead():
+            self.data = self.imu.getIMUData()
+            (self.data["pressureValid"], self.data["pressure"], self.data["temperatureValid"],
+             self.data["temperature"]) = self.pressure.pressureRead()
+            return True
+        return False
+
+    def zero_bearing(self):
+        """
+        Sets the current heading as the new zero point
+        """
+        if self.data is not None:
+            self.bearing_zero = self.data['fusionPose'[2]]
+        else:
+            self.bearing_zero = 0
 
     def get_bearing(self):
         """
@@ -41,5 +82,40 @@ class Compass():
         from the initial position of the robot when this class was initialised.
 
         :return:
-            Float containing the value expressed as degrees clockwise from the initial position.
+            Float containing the value expressed as radians clockwise from the initial position.
         """
+        if self.data is not None:
+            raw = self.data['fusionPose'[2]]
+            corrected = raw - self.bearing_zero
+            if corrected < -pi:
+                corrected += 2 * pi
+            elif corrected > pi:
+                corrected -= 2 * pi
+            return corrected
+        return None
+
+    def get_pitch(self):
+        if self.data is not None:
+            return self.data['fusionPose'[0]]
+        return None
+
+    def get_roll(self):
+        if self.data is not None:
+            return self.data['fusionPose'[1]]
+
+    def get_temperature(self):
+        if self.data is not None and self.data['temperatureValid']:
+            return self.data['temperature']
+        return None
+
+    def get_altitude(self):
+        def computeHeight(pressure_value):
+            return 44330.8 * (1 - pow(pressure_value / 1013.25, 0.190263))
+        if self.data is not None and self.data['pressureValid']:
+            return computeHeight(pressure_value = self.data['pressure'])
+        return None
+
+    def get_pressure(self):
+        if self.data is not None and self.data['pressureValid']:
+            return self.data['pressure']
+        return None

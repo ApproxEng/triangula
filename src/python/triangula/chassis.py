@@ -14,6 +14,17 @@ def test():
     print chassis.get_wheel_speeds(translation=Vector2(0, 0), rotation=0.5, origin=Point2(1, 0))
 
 
+class WheelSpeeds:
+    """
+    A simple container to hold desired wheel speeds, and to indicate whether any speeds were scaled back due to
+    impossibly high values.
+    """
+
+    def __init__(self, speeds, scaling):
+        self.speeds = speeds
+        self.scaling = scaling
+
+
 class HoloChassis:
     """
     An assembly of wheels at various positions and angles, which can be driven independently to create a holonomic drive
@@ -45,16 +56,20 @@ class HoloChassis:
             Optional, can define the centre of rotation to be something other than 0,0. Units are in millimetres.
             Defaults to rotating around x=0, y=0.
         :return:
-            A sequence of floats defining the revolutions per second required to obtain the appropriate overall motion.
-            The sequence contains one speed for each previously specified wheel, there is no limiting in operation so
-            this can potentially return results which are not physically possible, a subsequent processing step may be
-            required to detect this condition and either scale all motion back or revisit the motion plan to try to find
-            a better target vector.
+            A :class:`triangula.chassis.WheelSpeeds` containing both the target wheel speeds and the scaling, if any,
+            which was required to bring those speeds into the allowed range for all wheels. This prevents unexpected
+            motion in cases where only a single wheel is being asked to turn too fast, in such cases all wheel speeds
+            will be scaled back such that the highest is within the bounds allowed for that particular wheel. This
+            can accommodate wheels with different top speeds.
         """
 
         def velocity_at(point):
             """
             Compute the velocity as a Vector2 at the specified point given the enclosing translation and rotation values
+
+            Method: Normalise the vector from the origin to the point, then take the cross of itself to produce a unit
+            vector with direction that of a rotation around the origin. Scale this by the distance from the origin and
+            by the rotation in radians per second, then simply add the translation vector.
 
             :param euclid.Point2 point:
                 Point at which to calculate velocity
@@ -64,7 +79,13 @@ class HoloChassis:
             d = point - origin
             return d.normalized().cross() * abs(d) * rotation + translation
 
-        return list(wheel.speed(velocity_at(wheel.position)) for wheel in self.wheels)
+        wheel_speeds = (wheel.speed(velocity_at(wheel.position)) for wheel in self.wheels)
+        scale = 1.0
+        for speed, wheel in zip(wheel_speeds, self.wheels):
+            if wheel.max_speed is not None and abs(speed) > wheel.max_speed:
+                wheel_scale = wheel.max_speed / abs(speed)
+                scale = min(scale, wheel_scale)
+        return WheelSpeeds(speeds=list(speed / scale for speed in wheel_speeds), scaling=scale)
 
     class OmniWheel:
         """
@@ -80,7 +101,7 @@ class HoloChassis:
         for different sized wheels to be handled within the same chassis.
         """
 
-        def __init__(self, position, angle=None, radius=None, vector=None):
+        def __init__(self, position, max_speed=0, angle=None, radius=None, vector=None):
             """
             Create a new omni-wheel object, specifying the position and either a direction vector directly or the angle
             in degrees clockwise from the position Y axis along with the radius of the wheel.
@@ -88,6 +109,11 @@ class HoloChassis:
             :param euclid.Point2 position:
                 The wheel's contact point with the surface, specified relative to the centre of the
                 chassis. Units are millimetres.
+            :param float max_speed:
+                The maximum number of revolutions per second allowed for this wheel. When calculating the wheel speeds
+                required for a given trajectory this value is used to scale back all motion if any wheel would have to
+                move at an impossible speed. If not specified this defaults to None, indicating that no speed limit
+                should be placed on this wheel.
             :param angle:
                 The angle, specified in radians from the positive Y axis where positive values are clockwise from this
                 axis when viewed from above, of the direction of travel of the wheel when driven with a positive speed.
@@ -104,6 +130,7 @@ class HoloChassis:
                 revolution of the wheel.
             """
             self.position = position
+            self.max_speed = max_speed
             if angle is None and radius is None and vector is not None:
                 #  Specify wheel based on direct vector """
                 self.vector = vector
@@ -113,15 +140,28 @@ class HoloChassis:
                 self.vector = Vector2(sin(angle) * circumference, cos(angle) * circumference)
             else:
                 raise ValueError('Must specify exactly one of angle and radius or translation vector')
+            self.vector_magnitude_squared = self.vector.magnitude_squared()
 
         def speed(self, velocity):
             """
             Given a velocity at a wheel contact point, calculate the speed in revolutions per second at which the wheel
             should be driven.
 
+            Method: we want to find the projection of the velocity onto the vector representing the drive of this wheel.
+            We store the vector representing a single revolution of travel as self.vector, so the projection onto this
+            would be velocity.dot(self.vector / abs(self.vector)). However, we want revolutions per second, so we must
+            then divide again by abs(self.vector), leading to
+            velocity.dot(self.vector / abs(self.vector))/abs(self.vector). Because the definition of the dot product is
+            the sum of x1*x2, y1*y2, ... any scalar applied to each x, y ... of a single vector can be moved outside
+            the dot product, so we can simplify as velocity.dot(self.vector) / abs(self.vector)^2. As the magnitude of
+            the vector is taken by sqrt(x^2+y^2) we can simply express this as (x^2+y^2), held in the convenient
+            function magnitude_squared(). So our final simplified form is
+            velocity.dot(self.vector) / self.vector.magnitude_squared(). For efficiency, and because self.vector doesn't
+            change, we can pre-compute this.
+
             :param euclid.Vector2 velocity:
-                The velocity at the wheel's contact point with the surface
+                The velocity at the wheel's contact point with the surface, expressed in mm/s
             :return:
                 Target wheel speed in rotations per second to hit the desired vector at the contact point.
             """
-            return velocity.dot(self.vector) / self.vector.magnitude_squared()
+            return velocity.dot(self.vector) / self.vector_magnitude_squared
