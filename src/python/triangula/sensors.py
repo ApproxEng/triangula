@@ -2,10 +2,11 @@ __author__ = 'tom'
 # Classes representing sensors on the robot
 
 from math import pi
+from threading import Thread
+import sys
 
 import os
 import RTIMU
-import sys
 
 
 class WheelEncoders():
@@ -64,15 +65,31 @@ class IMU():
         self.imu.setCompassEnable(True)
         self.bearing_zero = 0
         self.data = None
-        self.update()
+        self.update_thread = IMU.IMUUpdateThread()
+        self.update_thread.start()
 
-    def update(self):
-        if self.imu.IMURead():
-            self.data = self.imu.getIMUData()
-            (self.data["pressureValid"], self.data["pressure"], self.data["temperatureValid"],
-             self.data["temperature"]) = self.pressure.pressureRead()
-            return True
-        return False
+    class IMUUpdateThread(Thread):
+
+        def __init__(self, imu):
+            Thread.__init__(self, name='IMU Update Thread')
+            self.setDaemon(True)
+            self.imu = imu
+            self.running = None
+
+        def run(self):
+            self.running = True
+            imu_object = self.imu
+            while self.running:
+                if imu_object.imu.IMURead():
+                    imu_object.data = imu_object.imu.getIMUData()
+                    (imu_object.data["pressureValid"],
+                     imu_object.data["pressure"],
+                     imu_object.data["temperatureValid"],
+                     imu_object.data["temperature"]) = imu_object.pressure.pressureRead()
+                    print "Updated state!"
+
+        def stop(self):
+            self.running = False
 
     def zero_bearing(self):
         """
@@ -118,8 +135,9 @@ class IMU():
     def get_altitude(self):
         def computeHeight(pressure_value):
             return 44330.8 * (1 - pow(pressure_value / 1013.25, 0.190263))
+
         if self.data is not None and self.data['pressureValid']:
-            return computeHeight(pressure_value = self.data['pressure'])
+            return computeHeight(pressure_value=self.data['pressure'])
         return None
 
     def get_pressure(self):
