@@ -79,7 +79,7 @@ class IMU():
         Sets the current heading as the new zero point
         """
         if self.data is not None:
-            self.bearing_zero = self.data['fusionPose'[2]]
+            self.bearing_zero = self.data['fusionPose'][2]
         else:
             self.bearing_zero = 0
 
@@ -92,7 +92,7 @@ class IMU():
             Float containing the value expressed as radians clockwise from the initial position.
         """
         if self.data is not None:
-            raw = self.data['fusionPose'[2]]
+            raw = self.data['fusionPose'][2]
             corrected = raw - self.bearing_zero
             if corrected < -pi:
                 corrected += 2 * pi
@@ -103,12 +103,12 @@ class IMU():
 
     def get_pitch(self):
         if self.data is not None:
-            return self.data['fusionPose'[0]]
+            return self.data['fusionPose'][0]
         return None
 
     def get_roll(self):
         if self.data is not None:
-            return self.data['fusionPose'[1]]
+            return self.data['fusionPose'][1]
 
     def get_temperature(self):
         if self.data is not None and self.data['temperatureValid']:
