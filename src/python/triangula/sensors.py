@@ -5,6 +5,7 @@ from math import pi
 
 import os
 import RTIMU
+import sys
 
 
 class WheelEncoders():
@@ -41,6 +42,7 @@ class IMU():
         """
         Create a new proxy to the IMU, performing any necessary initialisation.
         """
+        sys.path.append('.')
         if not os.path.exists(settings_path + '.ini'):
             print 'Settings file not found at {}, will be created'.format(settings_path + '.ini')
         s = RTIMU.Settings(settings_path)
