@@ -46,17 +46,21 @@ class IMU():
         if not os.path.exists(settings_path + '.ini'):
             print 'Settings file not found at {}, will be created'.format(settings_path + '.ini')
         s = RTIMU.Settings(settings_path)
+        print s
         self.imu = RTIMU.RTIMU(s)
+        print self.imu
         self.pressure = RTIMU.RTPressure(s)
+        print self.pressure
         print('IMU Name: ' + self.imu.IMUName())
         print('Pressure Name: ' + self.pressure.pressureName())
         if not self.imu.IMUInit():
-            raise StandardError('Unable to initialise IMU')
+            raise RuntimeError('Unable to initialise IMU')
+        else:
+            print('Initialised IMU')
         self.imu.setSlerpPower(0.02)
         self.imu.setGyroEnable(True)
         self.imu.setAccelEnable(True)
         self.imu.setCompassEnable(True)
-        print('Initialised IMU')
         self.bearing_zero = 0
         self.data = None
         self.update()
