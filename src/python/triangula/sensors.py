@@ -4,10 +4,11 @@ __author__ = 'tom'
 from math import pi
 from threading import Thread
 import sys
+import time
 
 import os
 import RTIMU
-import time
+
 
 class WheelEncoders():
     """
@@ -33,69 +34,73 @@ class WheelEncoders():
         """
 
 
-class IMU():
+class IMU(Thread):
     """
-    Class to read the fused compass / gyro / pressure sensor contained in the MPU6050 breakout board. Uses the
-    RTIMULib library to set up the chip and read its values.
+    Class to read the fused compass / gyro / pressure / temp sensors contained in the MPU6050 breakout board. Uses the
+    RTIMULib library to set up the chip and read its values. This class inherits from Thread as it needs to continuously
+    monitor the IMU. When the thread is running the various get_xxx methods will return live data.
     """
 
     def __init__(self, settings_path='RTIMULib'):
         """
-        Create a new proxy to the IMU, performing any necessary initialisation.
+        Create a new proxy to the IMU, performing any necessary initialisation. This does not start the update thread.
         """
+        Thread.__init__(self, name='IMU Update Thread')
+        self.setDaemon(True)
         sys.path.append('.')
         if not os.path.exists(settings_path + '.ini'):
             print 'Settings file not found at {}, will be created'.format(settings_path + '.ini')
-        self.settings = RTIMU.Settings(settings_path)
-        self.imu = RTIMU.RTIMU(self.settings)
-        self.pressure = RTIMU.RTPressure(self.settings)
-        print('IMU Name: ' + self.imu.IMUName())
-        print('Pressure Name: ' + self.pressure.pressureName())
-        if not self.imu.IMUInit():
+        settings = RTIMU.Settings(settings_path)
+        self.__imu = RTIMU.RTIMU(settings)
+        self.__pressure = RTIMU.RTPressure(settings)
+        print('IMU Name: ' + self.__imu.IMUName())
+        print('Pressure Name: ' + self.__pressure.pressureName())
+
+        # Initialise IMU, throwing a runtime error if we can't
+        if not self.__imu.IMUInit():
             raise RuntimeError('Unable to initialise IMU')
         else:
             print('Initialised IMU')
-        self.imu.setSlerpPower(0.02)
-        self.imu.setGyroEnable(True)
-        self.imu.setAccelEnable(True)
-        self.imu.setCompassEnable(True)
-        self.bearing_zero = 0
-        self.data = None
-        self.update_thread = IMU.IMUUpdateThread(self)
-        self.update_thread.start()
+        self.__imu.setSlerpPower(0.02)
+        self.__imu.setGyroEnable(True)
+        self.__imu.setAccelEnable(True)
+        self.__imu.setCompassEnable(True)
 
-    class IMUUpdateThread(Thread):
+        # Initialise pressure sensor, if we have one
+        if not self.__pressure.pressureInit():
+            print("Pressure sensor Init Failed")
+        else:
+            print("Pressure sensor Init Succeeded")
 
-        def __init__(self, imu):
-            Thread.__init__(self, name='IMU Update Thread')
-            self.setDaemon(True)
-            self.imu = imu
-            self.running = None
+        self.__bearing_zero = 0
+        self.__data = None
+        self.__running = None
 
-        def run(self):
-            self.running = True
-            imu_object = self.imu
-            poll_interval = imu_object.imu.IMUGetPollInterval()
-            while self.running:
-                if imu_object.imu.IMURead():
-                    imu_object.data = imu_object.imu.getIMUData()
-                    (imu_object.data["pressureValid"],
-                     imu_object.data["pressure"],
-                     imu_object.data["temperatureValid"],
-                     imu_object.data["temperature"]) = imu_object.pressure.pressureRead()
-                time.sleep(poll_interval*1.0/1000.0)
+    def run(self):
+        print 'Starting IMU update thread'
+        self.__running = True
+        poll_interval = self.__imu.IMUGetPollInterval()
+        while self.__running:
+            if self.__imu.IMURead():
+                self.__data = self.__imu.getIMUData()
+                (self.__data['pressureValid'],
+                 self.__data['pressure'],
+                 self.__data['temperatureValid'],
+                 self.__data['temperature']) = self.__pressure.pressureRead()
+            time.sleep(poll_interval * 1.0 / 1000.0)
+        print 'Exiting IMU update thread'
 
-        def stop(self):
-            self.running = False
+    def stop(self):
+        self.__running = False
 
     def zero_bearing(self):
         """
         Sets the current heading as the new zero point
         """
-        if self.data is not None:
-            self.bearing_zero = self.data['fusionPose'][2]
+        if self.__data is not None:
+            self.__bearing_zero = self.__data['fusionPose'][2]
         else:
-            self.bearing_zero = 0
+            self.__bearing_zero = 0
 
     def get_bearing(self):
         """
@@ -105,9 +110,9 @@ class IMU():
         :return:
             Float containing the value expressed as radians clockwise from the initial position.
         """
-        if self.data is not None:
-            raw = self.data['fusionPose'][2]
-            corrected = raw - self.bearing_zero
+        if self.__data is not None:
+            raw = self.__data['fusionPose'][2]
+            corrected = raw - self.__bearing_zero
             if corrected < -pi:
                 corrected += 2 * pi
             elif corrected > pi:
@@ -116,28 +121,28 @@ class IMU():
         return None
 
     def get_pitch(self):
-        if self.data is not None:
-            return self.data['fusionPose'][0]
+        if self.__data is not None:
+            return self.__data['fusionPose'][0]
         return None
 
     def get_roll(self):
-        if self.data is not None:
-            return self.data['fusionPose'][1]
+        if self.__data is not None:
+            return self.__data['fusionPose'][1]
 
     def get_temperature(self):
-        if self.data is not None and self.data['temperatureValid']:
-            return self.data['temperature']
+        if self.__data is not None and self.__data['temperatureValid']:
+            return self.__data['temperature']
         return None
 
     def get_altitude(self):
-        def computeHeight(pressure_value):
+        def compute_height(pressure_value):
             return 44330.8 * (1 - pow(pressure_value / 1013.25, 0.190263))
 
-        if self.data is not None and self.data['pressureValid']:
-            return computeHeight(pressure_value=self.data['pressure'])
+        if self.__data is not None and self.__data['pressureValid']:
+            return compute_height(pressure_value=self.__data['pressure'])
         return None
 
     def get_pressure(self):
-        if self.data is not None and self.data['pressureValid']:
-            return self.data['pressure']
+        if self.__data is not None and self.__data['pressureValid']:
+            return self.__data['pressure']
         return None
