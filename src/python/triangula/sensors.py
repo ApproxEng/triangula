@@ -7,7 +7,7 @@ import sys
 
 import os
 import RTIMU
-
+import time
 
 class WheelEncoders():
     """
@@ -47,14 +47,10 @@ class IMU():
         if not os.path.exists(settings_path + '.ini'):
             print 'Settings file not found at {}, will be created'.format(settings_path + '.ini')
         self.settings = RTIMU.Settings(settings_path)
-        print self.settings
         self.imu = RTIMU.RTIMU(self.settings)
-        print self.imu
         self.pressure = RTIMU.RTPressure(self.settings)
-        print self.pressure
         print('IMU Name: ' + self.imu.IMUName())
         print('Pressure Name: ' + self.pressure.pressureName())
-        print self.imu.IMUInit()
         if not self.imu.IMUInit():
             raise RuntimeError('Unable to initialise IMU')
         else:
@@ -79,6 +75,7 @@ class IMU():
         def run(self):
             self.running = True
             imu_object = self.imu
+            poll_interval = imu_object.imu.IMUGetPollInterval()
             while self.running:
                 if imu_object.imu.IMURead():
                     imu_object.data = imu_object.imu.getIMUData()
@@ -86,7 +83,7 @@ class IMU():
                      imu_object.data["pressure"],
                      imu_object.data["temperatureValid"],
                      imu_object.data["temperature"]) = imu_object.pressure.pressureRead()
-                    print "Updated state!"
+                time.sleep(poll_interval*1.0/1000.0)
 
         def stop(self):
             self.running = False
