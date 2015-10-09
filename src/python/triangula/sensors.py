@@ -87,7 +87,7 @@ class IMU(Thread):
                  self.__data['pressure'],
                  self.__data['temperatureValid'],
                  self.__data['temperature']) = self.__pressure.pressureRead()
-            time.sleep(poll_interval * 1.0 / 1000.0)
+                time.sleep(poll_interval * 1.0 / 1000.0)
         print 'Exiting IMU update thread'
 
     def stop(self):
