@@ -45,14 +45,15 @@ class IMU():
         sys.path.append('.')
         if not os.path.exists(settings_path + '.ini'):
             print 'Settings file not found at {}, will be created'.format(settings_path + '.ini')
-        s = RTIMU.Settings(settings_path)
-        print s
-        self.imu = RTIMU.RTIMU(s)
+        self.settings = RTIMU.Settings(settings_path)
+        print self.settings
+        self.imu = RTIMU.RTIMU(self.settings)
         print self.imu
-        self.pressure = RTIMU.RTPressure(s)
+        self.pressure = RTIMU.RTPressure(self.settings)
         print self.pressure
         print('IMU Name: ' + self.imu.IMUName())
         print('Pressure Name: ' + self.pressure.pressureName())
+        print self.imu.IMUInit()
         if not self.imu.IMUInit():
             raise RuntimeError('Unable to initialise IMU')
         else:
