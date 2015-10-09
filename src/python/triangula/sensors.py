@@ -65,7 +65,7 @@ class IMU():
         self.imu.setCompassEnable(True)
         self.bearing_zero = 0
         self.data = None
-        self.update_thread = IMU.IMUUpdateThread()
+        self.update_thread = IMU.IMUUpdateThread(self)
         self.update_thread.start()
 
     class IMUUpdateThread(Thread):
