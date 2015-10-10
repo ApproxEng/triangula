@@ -1,4 +1,8 @@
 __author__ = 'tom'
+"""
+Low level interface to the MPU. For whatever reason this wasn't working when used within an object. No idea why!
+"""
+
 import sys
 
 sys.path.append('.')
@@ -25,7 +29,7 @@ def name():
     return 'IMU: {}, Pressure: {}'.format(_imu.IMUName(), _pressure.pressureName())
 
 
-def imu():
+def read():
     d = False
     attempts = 0
     while not d and attempts < 3:
