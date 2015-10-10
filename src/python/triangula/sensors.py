@@ -48,27 +48,27 @@ class IMU():
         if not os.path.exists(settings_path + '.ini'):
             print 'Settings file not found at {}, will be created'.format(settings_path + '.ini')
         settings = RTIMU.Settings(settings_path)
-        self.__imu = RTIMU.RTIMU(settings)
-        self.__pressure = RTIMU.RTPressure(settings)
-        print('IMU Name: ' + self.__imu.IMUName())
-        print('Pressure Name: ' + self.__pressure.pressureName())
+        self._imu = RTIMU.RTIMU(settings)
+        self._pressure = RTIMU.RTPressure(settings)
+        print('IMU Name: ' + self._imu.IMUName())
+        print('Pressure Name: ' + self._pressure.pressureName())
 
-        self.__bearing_zero = 0
-        self.__poll_interval = 0
+        self._bearing_zero = 0
+        self._imu_poll_interval = 0
 
     def _init_imu(self):
-        if self.__imu.IMUInit():
-            self._imu_poll_interval = self.__imu.IMUGetPollInterval() * 0.001
-            self.__imu.setSlerpPower(0.02)
-            self.__imu.setGyroEnable(True)
-            self.__imu.setAccelEnable(True)
-            self.__imu.setCompassEnable(True)
+        if self._imu.IMUInit():
+            self._imu_poll_interval = self._imu.IMUGetPollInterval() * 0.001
+            self._imu.setSlerpPower(0.02)
+            self._imu.setGyroEnable(True)
+            self._imu.setAccelEnable(True)
+            self._imu.setCompassEnable(True)
             print('IMU initialised')
         else:
             raise OSError('IMU init failed')
 
     def _init_pressure(self):
-        if self.__pressure.pressureInit():
+        if self._pressure.pressureInit():
             print('Pressure sensor initialised')
         else:
             raise OSError('Pressure sensor init failed')
@@ -79,17 +79,17 @@ class IMU():
         attempts = 0
         success = False
         while not success and attempts < 3:
-            success = self.__imu.IMURead()
+            success = self._imu.IMURead()
             attempts += 1
-            time.sleep(self.__poll_interval)
+            time.sleep(self._imu_poll_interval)
 
     def get_data(self):
         self._read_imu()
-        data = self.__imu.getIMUData()
+        data = self._imu.getIMUData()
         (data['pressureValid'],
          data['pressure'],
          data['temperatureValid'],
-         data['temperature']) = self.__pressure.pressureRead()
+         data['temperature']) = self._pressure.pressureRead()
         return data
 
     def _get_bearing_uncorrected(self):
