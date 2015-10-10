@@ -52,21 +52,58 @@ class IMU():
         self._pressure = RTIMU.RTPressure(settings)
         print('IMU Name: ' + self._imu.IMUName())
         print('Pressure Name: ' + self._pressure.pressureName())
-        self._init_imu()
-        self._init_pressure()
+        self._init_imu = False
+        self._init_pressure = False
         self._bearing_zero = 0
-        self._imu_poll_interval = 0
+        self._compass_enabled = False
+        self._gyro_enabled = False
+        self._accel_enabled = False
+        self._last_orientation = {'pitch': 0, 'roll': 0, 'yaw': 0}
 
-    def _init_imu(self):
-        if self._imu.IMUInit():
-            self._imu_poll_interval = self._imu.IMUGetPollInterval() * 0.001
-            self._imu.setSlerpPower(0.02)
-            self._imu.setGyroEnable(True)
-            self._imu.setAccelEnable(True)
-            self._imu.setCompassEnable(True)
-            print('IMU initialised')
-        else:
-            raise OSError('IMU init failed')
+    def _imu_init(self):
+        if not self._init_imu:
+            self._init_imu = self._imu.IMUInit()
+            if self._init_imu:
+                self._imu_poll_interval = self._imu.IMUGetPollInterval() * 0.001
+                # Enable everything on IMU
+                self.set_imu_config(True, True, True)
+            else:
+                raise OSError('IMU Init Failed, please run as root / use sudo')
+
+    def _pressure_init(self):
+        if not self._init_pressure:
+            self._init_pressure = self._pressure.pressureInit()
+            if not self._init_pressure:
+                raise OSError('Pressure Init Failed, please run as root / use sudo')
+
+    def set_imu_config(self, compass_enabled, gyro_enabled, accel_enabled):
+        """
+        Enables and disables the gyroscope, accelerometer and/or magnetometer
+        input to the orientation functions
+        """
+
+        # If the consuming code always calls this just before reading the IMU
+        # the IMU consistently fails to read. So prevent unnecessary calls to
+        # IMU config functions using state variables
+
+        self._imu_init()  # Ensure imu is initialised
+
+        if (not isinstance(compass_enabled, bool)
+            or not isinstance(gyro_enabled, bool)
+            or not isinstance(accel_enabled, bool)):
+            raise TypeError('All set_imu_config parameters must be of boolan type')
+
+        if self._compass_enabled != compass_enabled:
+            self._compass_enabled = compass_enabled
+            self._imu.setCompassEnable(self._compass_enabled)
+
+        if self._gyro_enabled != gyro_enabled:
+            self._gyro_enabled = gyro_enabled
+            self._imu.setGyroEnable(self._gyro_enabled)
+
+        if self._accel_enabled != accel_enabled:
+            self._accel_enabled = accel_enabled
+            self._imu.setAccelEnable(self._accel_enabled)
 
     def _init_pressure(self):
         if self._pressure.pressureInit():
@@ -75,8 +112,10 @@ class IMU():
             raise OSError('Pressure sensor init failed')
 
     def _read_imu(self):
+        self._imu_init()
         attempts = 0
         success = False
+        self._imu_poll_interval = (float)(self._imu.IMUGetPollInterval()) * 0.001
         while not success and attempts < 3:
             success = self._imu.IMURead()
             attempts += 1
@@ -84,17 +123,10 @@ class IMU():
 
     def get_data(self):
         self._read_imu()
-        data = self._imu.getIMUData()
-        (data['pressureValid'],
-         data['pressure'],
-         data['temperatureValid'],
-         data['temperature']) = self._pressure.pressureRead()
-        return data
+        return self._imu.getIMUData()
 
     def _get_bearing_uncorrected(self):
-        data = self.get_data()
-        if data is not None:
-            return data['fusionPose'][2]
+        return self.get_orientation()['yaw']
 
     def zero_bearing(self):
         """
@@ -102,7 +134,7 @@ class IMU():
         """
         bearing = self._get_bearing_uncorrected()
         if bearing is not None:
-            self.__bearing_zero = bearing
+            self._bearing_zero = bearing
 
     def get_bearing(self):
         """
@@ -114,7 +146,7 @@ class IMU():
         """
         bearing_uncorrected = self._get_bearing_uncorrected()
         if bearing_uncorrected is not None:
-            corrected = bearing_uncorrected - self.__bearing_zero
+            corrected = bearing_uncorrected - self._bearing_zero
             if corrected < -pi:
                 corrected += 2 * pi
             elif corrected > pi:
@@ -132,17 +164,64 @@ class IMU():
         if data is not None:
             return data['fusionPose'][1]
 
-    def get_temperature(self):
-        data = self.get_data()
-        if data is not None and data['temperatureValid']:
-            return data['temperature']
+    def _get_raw_data(self, is_valid_key, data_key):
+        """
+        Internal. Returns the specified raw data from the IMU when valid
+        """
+        result = None
+        if self._read_imu():
+            data = self._imu.getIMUData()
+            if data[is_valid_key]:
+                raw = data[data_key]
+                result = {
+                    'x': raw[0],
+                    'y': raw[1],
+                    'z': raw[2]
+                }
+        return result
+
+    def get_orientation(self):
+        """
+        Returns a dictionary object to represent the current orientation in
+        radians using the aircraft principal axes of pitch, roll and yaw
+        """
+
+        raw = self._get_raw_data('fusionPoseValid', 'fusionPose')
+
+        if raw is not None:
+            raw['roll'] = raw.pop('x')
+            raw['pitch'] = raw.pop('y')
+            raw['yaw'] = raw.pop('z')
+            self._last_orientation = raw
+
+        return self._last_orientation
 
     def get_altitude(self):
-        data = self.get_data()
-        if data is not None and data['pressureValid']:
-            return 44330.8 * (1 - pow(data['pressure'] / 1013.25, 0.190263))
+        """
+        Return an estimate of altitude based on the pressure sensor
+        """
+        pressure = self.get_pressure()
+        if pressure is not None:
+            return 44330.8 * (1 - pow(pressure / 1013.25, 0.190263))
 
     def get_pressure(self):
-        data = self.get_data()
-        if data is not None and data['pressureValid']:
-            return data['pressure']
+        """
+        Returns the pressure in Millibars
+        """
+        self._pressure_init()  # Ensure pressure sensor is initialised
+        pressure = 0
+        data = self._pressure.pressureRead()
+        if data[0]:  # Pressure valid
+            pressure = data[1]
+        return pressure
+
+    def get_temperature(self):
+        """
+        Returns the temperature in Celsius from the pressure sensor
+        """
+        self._pressure_init()  # Ensure pressure sensor is initialised
+        temp = 0
+        data = self._pressure.pressureRead()
+        if data[2]:  # Temp valid
+            temp = data[3]
+        return temp
