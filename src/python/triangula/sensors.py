@@ -52,7 +52,8 @@ class IMU():
         self._pressure = RTIMU.RTPressure(settings)
         print('IMU Name: ' + self._imu.IMUName())
         print('Pressure Name: ' + self._pressure.pressureName())
-
+        self._init_imu()
+        self._init_pressure()
         self._bearing_zero = 0
         self._imu_poll_interval = 0
 
@@ -74,8 +75,6 @@ class IMU():
             raise OSError('Pressure sensor init failed')
 
     def _read_imu(self):
-        self._init_imu()
-        self._init_pressure()
         attempts = 0
         success = False
         while not success and attempts < 3:
