@@ -8,28 +8,30 @@ import time
 SETTINGS_FILE = 'RTIMULib'
 
 s = RTIMU.Settings(SETTINGS_FILE)
-imu = RTIMU.RTIMU(s)
-if not imu.IMUInit():
+_imu = RTIMU.RTIMU(s)
+if not _imu.IMUInit():
     raise ImportError('Unable to initialise IMU')
-pressure = RTIMU.RTPressure(s)
-if not pressure.PressureInit():
+_pressure = RTIMU.RTPressure(s)
+if not _pressure.pressureInit():
     raise ImportError('Unable to initialise pressure sensor')
-imu.setSlerpPower(0.02)
-imu.setGyroEnable(True)
-imu.setAccelEnable(True)
-imu.setCompassEnable(True)
-poll_interval = imu.IMUGetPollInterval()
+_imu.setSlerpPower(0.02)
+_imu.setGyroEnable(True)
+_imu.setAccelEnable(True)
+_imu.setCompassEnable(True)
+poll_interval = _imu.IMUGetPollInterval()
+
 
 def name():
-    return 'IMU: {}, Pressure: {}'.format(imu.IMUName(), pressure.pressureName())
+    return 'IMU: {}, Pressure: {}'.format(_imu.IMUName(), _pressure.pressureName())
+
 
 def imu():
     d = False
     attempts = 0
     while not d and attempts < 3:
-        if imu.IMURead():
-            d = imu.getIMUData()
-            (d['pressureValid'], d['pressure'], d['temperatureValid'], d['temperature']) = pressure.pressureRead()
+        if _imu.IMURead():
+            d = _imu.getIMUData()
+            (d['pressureValid'], d['pressure'], d['temperatureValid'], d['temperature']) = _pressure.pressureRead()
         else:
             attempts += 1
             time.sleep(poll_interval * 1.0 / 1000)
