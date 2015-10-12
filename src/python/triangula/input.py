@@ -160,7 +160,6 @@ class SixAxis():
         return remove
 
     def handle_event(self, event):
-        print event
         if event.type == 3:
             value = (event.value - 128.0) / 128.0
             if event.code == 0:
