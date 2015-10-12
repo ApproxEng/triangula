@@ -1,9 +1,9 @@
 __author__ = 'tom'
 
 from asyncore import file_dispatcher, loop
-
-from evdev import InputDevice, list_devices
 from threading import Thread
+
+from evdev import InputDevice, list_devices, ecodes
 
 
 class SixAxis():
@@ -41,7 +41,7 @@ class SixAxis():
     BUTTON_SQUARE = 15  #: Square
     BUTTON_PS = 16  #: PS button
 
-    def __init__(self, dead_zone=0.2, hot_zone=0.05, init_pygame=True):
+    def __init__(self, dead_zone=0.0, hot_zone=0.0):
         """
         Discover and initialise a PS3 SixAxis controller connected to this computer
 
@@ -64,11 +64,6 @@ class SixAxis():
             min are 1.0 and -1.0 respectively). As with the dead zone, these are applied separately to each axis, so in
             the case where the hot zone is set to 1/sqrt(2), a circular motion of the stick will map to x and y values
             which trace the outline of a square of unit size, allowing for all values to be emitted from the stick.
-        :param boolean init_pygame:
-            Defaults to True; if set then pygame will be initialised with the appropriate properties to run headless, if
-            false then no pygame initialisation will be performed. If you pass False to this method you must have
-            already initialised pygame (there's no requirement to initialise the joystick subsystem, this is always
-            performed in this method, it's safe to run multiple times anyway)
         :return: an initialised link to an attached PS3 SixAxis controller
         """
 
@@ -85,7 +80,6 @@ class SixAxis():
             return
         for device in [InputDevice(fn) for fn in list_devices()]:
             if device.name == 'PLAYSTATION(R)3 Controller':
-                self.sixaxis = device
                 parent = self
 
                 class InputDeviceDispatcher(file_dispatcher):
@@ -100,17 +94,18 @@ class SixAxis():
                         for event in self.recv():
                             parent.handle_event(event)
 
-                InputDeviceDispatcher()
-
                 class AsyncLoop(Thread):
                     def __init__(self):
                         Thread.__init__(self, name='InputDispatchThread')
+                        self._set_daemon()
 
                     def run(self):
                         loop()
 
+                InputDeviceDispatcher()
                 self.stop_function = AsyncLoop()
                 self.stop_function.start()
+                return
 
     def __str__(self):
         return 'x1={}, y1={}, x2={}, y2={}'.format(
@@ -160,8 +155,12 @@ class SixAxis():
         return remove
 
     def handle_event(self, event):
-        if event.type == 3:
+        if event.type == ecodes.EV_ABS:
             value = (event.value - 128.0) / 128.0
+            if value < -1.0:
+                value = -1.0
+            elif value > 1.0:
+                value = 1.0
             if event.code == 0:
                 # Left stick, X axis
                 self.axes[0]._set(value)
@@ -174,6 +173,8 @@ class SixAxis():
             elif event.code == 5:
                 # Right stick, Y axis (yes, 5...)
                 self.axes[3]._set(value)
+        elif event.type == ecodes.EV_KEY:
+            print(event.type, event.code, event.value)
         """
         for event in pg_event.get():
             if event.type == JOYAXISMOTION and event.joy == self.active_index:
@@ -266,7 +267,7 @@ if __name__ == '__main__':
     from input import SixAxis
     import time
 
-    controller = SixAxis(dead_zone=0.2, hot_zone=0.1, init_pygame=True)
+    controller = SixAxis(dead_zone=0.0, hot_zone=0.0)
 
 
     def handler(button):
