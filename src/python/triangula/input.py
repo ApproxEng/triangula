@@ -1,5 +1,7 @@
 __author__ = 'tom'
 
+from asyncore import file_dispatcher, loop
+
 from evdev import InputDevice, list_devices
 
 
@@ -78,9 +80,27 @@ class SixAxis():
         self.connect()
 
     def connect(self):
+        if self.sixaxis:
+            return
         for device in [InputDevice(fn) for fn in list_devices()]:
             if device.name == 'PLAYSTATION(R)3 Controller':
                 self.sixaxis = device
+                parent = self
+
+                class InputDeviceDispatcher(file_dispatcher):
+                    def __init__(self):
+                        self.device = device
+                        file_dispatcher.__init__(self, device)
+
+                    def recv(self, ign=None):
+                        return self.device.read()
+
+                    def handle_read(self):
+                        for event in self.recv():
+                            parent.handle_event(event)
+
+                InputDeviceDispatcher()
+                loop()
 
     def __str__(self):
         return 'x1={}, y1={}, x2={}, y2={}'.format(
@@ -129,23 +149,21 @@ class SixAxis():
 
         return remove
 
-    def handle_events(self):
-        if self.sixaxis is not None:
-            for event in self.sixaxis.read_loop():
-                if event.type == 3:
-                    value = (event.value - 128.0) / 128.0
-                    if event.code == 0:
-                        # Left stick, X axis
-                        self.axes[0]._set(value)
-                    elif event.code == 1:
-                        # Left stick, Y axis
-                        self.axes[1]._set(value)
-                    elif event.code == 2:
-                        # Right stick, X axis
-                        self.axes[2]._set(value)
-                    elif event.code == 5:
-                        # Right stick, Y axis (yes, 5...)
-                        self.axes[3]._set(value)
+    def handle_event(self, event):
+        if event.type == 3:
+            value = (event.value - 128.0) / 128.0
+            if event.code == 0:
+                # Left stick, X axis
+                self.axes[0]._set(value)
+            elif event.code == 1:
+                # Left stick, Y axis
+                self.axes[1]._set(value)
+            elif event.code == 2:
+                # Right stick, X axis
+                self.axes[2]._set(value)
+            elif event.code == 5:
+                # Right stick, Y axis (yes, 5...)
+                self.axes[3]._set(value)
         """
         for event in pg_event.get():
             if event.type == JOYAXISMOTION and event.joy == self.active_index:
