@@ -41,9 +41,9 @@ class SixAxis():
     BUTTON_SQUARE = 15  #: Square
     BUTTON_PS = 16  #: PS button
 
-    def __init__(self, dead_zone=0.0, hot_zone=0.0):
+    def __init__(self, dead_zone=0.0, hot_zone=0.0, connect=False):
         """
-        Discover and initialise a PS3 SixAxis controller connected to this computer
+        Discover and initialise a PS3 SixAxis controller connected to this computer.
 
         :param float dead_zone:
             Creates a dead zone centred on the centre position of the axis (which may or may not be zero depending on
@@ -64,20 +64,51 @@ class SixAxis():
             min are 1.0 and -1.0 respectively). As with the dead zone, these are applied separately to each axis, so in
             the case where the hot zone is set to 1/sqrt(2), a circular motion of the stick will map to x and y values
             which trace the outline of a square of unit size, allowing for all values to be emitted from the stick.
-        :return: an initialised link to an attached PS3 SixAxis controller
+        :param connect:
+            If true, call connect(), otherwise you need to call it elsewhere. Note that connect() may raise IOError if
+            it can't find a PS3 controller, so it's best to call it explicitly yourself and handle the error. Defaults
+            to False.
+        :return: an initialised link to an attached PS3 SixAxis controller.
         """
 
-        self.stop_function = None
+        self._stop_function = None
         self.axes = [SixAxis.Axis('left_x', dead_zone=dead_zone, hot_zone=hot_zone),
                      SixAxis.Axis('left_y', dead_zone=dead_zone, hot_zone=hot_zone, invert=True),
                      SixAxis.Axis('right_x', dead_zone=dead_zone, hot_zone=hot_zone),
                      SixAxis.Axis('right_y', dead_zone=dead_zone, hot_zone=hot_zone, invert=True)]
         self.button_handlers = []
-        self.connect()
+        if connect:
+            self.connect()
+
+    def is_connected(self):
+        """
+        Check whether we have a connection
+        :return:
+            True if we're connected to a controller, False otherwise.
+        """
+        if self._stop_function:
+            return True
+        else:
+            return False
 
     def connect(self):
-        if self.stop_function:
-            return
+        """
+        Connect to the first PS3 controller available within /dev/inputX, identifying it by name (this may mean
+        that the code doesn't work with non-genuine PS3 controllers, I only have original ones so haven't had
+        a chance to test).
+
+        This also creates a new thread to run the asyncore loop, and uses a file dispatcher monitoring the corresponding
+        device to handle input events. All events are passed to the handle_event function in the parent, this is then
+        responsible for interpreting the events and updating any internal state, calling button handlers etc.
+
+        :return:
+            True if a controller was found and connected, False if we already had a connection
+        :raises IOError:
+            If we didn't already have a controller but couldn't find a new one, this normally means
+            there's no controller paired with the Pi
+        """
+        if self._stop_function:
+            return False
         for device in [InputDevice(fn) for fn in list_devices()]:
             if device.name == 'PLAYSTATION(R)3 Controller':
                 parent = self
@@ -94,20 +125,40 @@ class SixAxis():
                         for event in self.recv():
                             parent.handle_event(event)
 
+                    def handle_error(self):
+                        pass
+
                 class AsyncLoop(Thread):
-                    def __init__(self):
+                    def __init__(self, channel):
                         Thread.__init__(self, name='InputDispatchThread')
                         self._set_daemon()
+                        self.channel = channel
 
                     def run(self):
                         loop()
 
-                InputDeviceDispatcher()
-                self.stop_function = AsyncLoop()
-                self.stop_function.start()
-                return
+                    def stop(self):
+                        self.channel.close()
+
+                loop_thread = AsyncLoop(InputDeviceDispatcher())
+                self._stop_function = loop_thread.stop
+                loop_thread.start()
+                return True
+        raise IOError('Unable to find a SixAxis controller')
+
+    def disconnect(self):
+        """
+        Disconnect from any controllers, shutting down the channel and allowing the monitoring thread to terminate
+        if there's nothing else bound into the evdev loop. Doesn't do anything if we're not connected to a controller
+        """
+        if self._stop_function:
+            self._stop_function()
+            self._stop_function = None
 
     def __str__(self):
+        """
+        Simple string representation of the state of the axes
+        """
         return 'x1={}, y1={}, x2={}, y2={}'.format(
             self.axes[0].corrected_value(), self.axes[1].corrected_value(),
             self.axes[2].corrected_value(), self.axes[3].corrected_value())
@@ -155,10 +206,19 @@ class SixAxis():
         return remove
 
     def handle_event(self, event):
+        """
+        Handle a single evdev event, this updates the internal state of the Axis objects as well as calling any
+        registered button handlers.
+
+        :internal:
+
+        :param event:
+            The evdev event object to parse
+        """
         if event.type == ecodes.EV_ABS:
-            value = (event.value - 128.0) / 128.0
-            if value < -1.0:
-                value = -1.0
+            value = float(event.value) / 255.0
+            if value < 0:
+                value = 0
             elif value > 1.0:
                 value = 1.0
             if event.code == 0:
@@ -175,26 +235,57 @@ class SixAxis():
                 self.axes[3]._set(value)
         elif event.type == ecodes.EV_KEY:
             print(event.type, event.code, event.value)
-        """
-        for event in pg_event.get():
-            if event.type == JOYAXISMOTION and event.joy == self.active_index:
-                if event.axis < len(self.axes):
-                    self.axes[event.axis]._set(event.value)
-            elif event.type == JOYBUTTONDOWN and event.joy == self.active_index:
-                for handler in self.button_handlers:
-                    if handler['mask'] & (1 << event.button) != 0:
-                        handler['handler'](event.button)
-        """
+            if event.value == 1:
+                if event.code == 288:
+                    button = SixAxis.BUTTON_SELECT
+                elif event.code == 291:
+                    button = SixAxis.BUTTON_START
+                elif event.code == 289:
+                    button = SixAxis.BUTTON_LEFT_STICK
+                elif event.code == 290:
+                    button = SixAxis.BUTTON_RIGHT_STICK
+                elif event.code == 295:
+                    button = SixAxis.BUTTON_D_LEFT
+                elif event.code == 292:
+                    button = SixAxis.BUTTON_D_UP
+                elif event.code == 293:
+                    button = SixAxis.BUTTON_D_RIGHT
+                elif event.code == 294:
+                    button = SixAxis.BUTTON_D_DOWN
+                elif event.code == 704:
+                    button = SixAxis.BUTTON_PS
+                elif event.code == 303:
+                    button = SixAxis.BUTTON_SQUARE
+                elif event.code == 300:
+                    button = SixAxis.BUTTON_TRIANGLE
+                elif event.code == 301:
+                    button = SixAxis.BUTTON_CIRCLE
+                elif event.code == 302:
+                    button = SixAxis.BUTTON_CROSS
+                elif event.code == 299:
+                    button = SixAxis.BUTTON_R1
+                elif event.code == 297:
+                    button = SixAxis.BUTTON_R2
+                elif event.code == 298:
+                    button = SixAxis.BUTTON_L1
+                elif event.code == 296:
+                    button = SixAxis.BUTTON_L2
+                else:
+                    button = None
+                if button:
+                    for handler in self.button_handlers:
+                        if handler['mask'] & (1 << button) != 0:
+                            handler['handler'](button)
 
     class Axis():
         """A single analogue axis on the SixAxis controller"""
 
         def __init__(self, name, invert=False, dead_zone=0.0, hot_zone=0.0):
             self.name = name
-            self.centre = 0.0
+            self.centre = 0.5
             self.max = 0.9
-            self.min = -0.9
-            self.value = 0.0
+            self.min = 0.1
+            self.value = 0.5
             self.invert = invert
             self.dead_zone = dead_zone
             self.hot_zone = hot_zone
@@ -211,32 +302,31 @@ class SixAxis():
             :return: a float value, negative to the left or down and ranging from -1.0 to 1.0
             """
 
-            centred = self.value - self.centre
+            high_range = self.max - self.centre
+            high_start = self.centre + self.dead_zone * high_range
+            high_end = self.max - self.hot_zone * high_range
 
-            if abs(centred) <= self.dead_zone:
-                return 0.0
-            elif centred > 0 and self.value > self.max - (self.hot_zone * self.max):
-                if not self.invert:
-                    return 1.0
-                else:
-                    return -1.0
-            elif centred < 0 and self.value < self.min - (self.hot_zone * self.min):
-                if not self.invert:
-                    return -1.0
-                else:
-                    return 1.0
+            low_range = self.centre - self.min
+            low_start = self.centre - self.dead_zone * low_range
+            low_end = self.min + self.hot_zone * low_range
 
-            if centred > 0:
-                top_range = self.max - (self.hot_zone * self.max + self.dead_zone)
-                result = centred / top_range
+            if self.value > high_start:
+                if self.value > high_end:
+                    result = 1.0
+                else:
+                    result = (self.value - high_start) / (high_end - high_start)
+            elif self.value < low_start:
+                if self.value < low_end:
+                    result = -1.0
+                else:
+                    result = (self.value - low_start) / (low_start - low_end)
             else:
-                bottom_range = self.dead_zone - (self.min - self.hot_zone * self.min)
-                result = centred / bottom_range
+                result = 0
 
-            if self.invert:
-                result = -result
-
-            return result
+            if not self.invert:
+                return result
+            else:
+                return -result
 
         def _reset(self):
             """
@@ -245,9 +335,9 @@ class SixAxis():
 
             :internal:
             """
-            self.centre = 0.0
-            self.max = 1.0
-            self.min = -1.0
+            self.centre = 0.5
+            self.max = 0.9
+            self.min = 0.1
 
         def _set(self, new_value):
             """
@@ -261,7 +351,6 @@ class SixAxis():
                 self.max = new_value
             elif new_value < self.min:
                 self.min = new_value
-
 
 if __name__ == '__main__':
     from input import SixAxis
