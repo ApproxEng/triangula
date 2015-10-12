@@ -1,4 +1,4 @@
-from math import cos, sin, pi
+from math import cos, sin, pi, radians
 
 from euclid import Vector2, Point2
 
@@ -12,6 +12,82 @@ def test():
     )
     print chassis.get_wheel_speeds(translation=Vector2(0, 0), rotation=0.5)
     print chassis.get_wheel_speeds(translation=Vector2(0, 0), rotation=0.5, origin=Point2(1, 0))
+
+
+def rotate_point(point, angle, origin=None):
+    """
+    Rotate a Point2 around another Point2
+
+    :param euclid.Point2 point:
+        The point to rotate
+    :param float angle:
+        Angle in radians
+    :param euclid.Point2 origin:
+        Origin of the rotation, defaults to (0,0) if not specified
+    :return:
+        A new :class:`euclid.Point2` containing the rotated input point
+    """
+    if origin is None:
+        origin = Point2(0, 0)
+    s = sin(angle)
+    c = cos(angle)
+    return Point2(c * (point.x - origin.x) - s * (point.y - origin.y) + origin.x,
+                  s * (point.x - origin.x) + c * (point.y - origin.y) + origin.y)
+
+
+def rotate_vector(vector, angle, origin=None):
+    """
+    Rotate a :class:`euclid.Vector2` around a :class:`euclid.Point2`
+
+    :param euclid.Point2 point:
+        The point to rotate
+    :param float angle:
+        Angle in radians
+    :param euclid.Point2 origin:
+        Origin of the rotation, defaults to (0,0) if not specified
+    :return:
+        A new :class:`euclid.Point2` containing the rotated input point
+    """
+    if origin is None:
+        origin = Point2(0, 0)
+    s = sin(angle)
+    c = cos(angle)
+    return Vector2(c * (vector.x - origin.x) - s * (vector.y - origin.y) + origin.x,
+                   s * (vector.x - origin.x) + c * (vector.y - origin.y) + origin.y)
+
+
+def get_regular_triangular_chassis(wheel_distance, wheel_radius, max_rotations_per_second):
+    """
+    Build a HoloChassis object with three wheels, each identical in size and maximum speed. Each wheel is positioned
+    at the corner of a regular triangle, and with direction perpendicular to the normal vector at that corner.
+
+    :param wheel_distance:
+        Distance in millimetres between the contact points of each pair of wheels (i.e. the length of each edge of the
+        regular triangle)
+    :param wheel_radius:
+        Wheel radius in millimetres
+    :param max_rotations_per_second:
+        Maximum wheel speed in revolutions per second
+    :return:
+        An appropriately configured HoloChassis
+    """
+    point = Point2(0, cos(radians(30)) * wheel_distance / 2.0)
+    vector = Vector2(2 * pi * wheel_radius, 0)
+
+    wheel_a = HoloChassis.OmniWheel(
+        position=point,
+        vector=vector,
+        max_speed=max_rotations_per_second)
+    wheel_b = HoloChassis.OmniWheel(
+        position=rotate_point(point, pi * 2 / 3),
+        vector=rotate_vector(vector, pi * 2 / 3),
+        max_speed=max_rotations_per_second)
+    wheel_c = HoloChassis.OmniWheel(
+        position=rotate_point(point, pi * 4 / 3),
+        vector=rotate_vector(vector, pi * 4 / 3),
+        max_speed=max_rotations_per_second)
+
+    return HoloChassis(wheels=[wheel_a, wheel_b, wheel_c])
 
 
 class WheelSpeeds:

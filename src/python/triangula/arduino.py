@@ -2,7 +2,7 @@ __author__ = 'tom'
 
 import smbus
 
-ARDUINO_ADDRESS = 0x77
+ARDUINO_ADDRESS = 0x70
 DEVICE_MOTORS = 0x00
 
 
@@ -21,44 +21,35 @@ class Arduino:
     def __init__(self):
         self.bus = smbus.SMBus(1)
 
-    def set_power(self, a, b, c):
+    def set_motor_power(self, a, b, c):
         """
         Set motor power, writing values directly to the Syren controllers
 
-        :param int a:
-            signed 8 bit power value from -127 to 127 for wheel a
-        :param int b:
-            signed 8 bit power value from -127 to 127 for wheel b
-        :param int c:
-            signed 8 bit power value from -127 to 127 for wheel c
-        """
-        motor_values = [a, b, c]
-        self.bus.write_i2c_block_data(ARDUINO_ADDRESS, DEVICE_MOTORS, motor_values)
-
-    def set_lights(self, brightness, a1, a2, b1, b2, c1, c2):
-        """
-        Set the end colours of the light strips, and their overall brightness
-
-        :param int brightness:
-            8 bit unsigned int, 0 is off, 255 is full intensity
-        :param int a1:
-            8 bit unsigned int, hue for top of light stick a
-        :param int a2:
-            8 bit unsigned int, hue for bottom of light stick a
-        :param int b1:
-            8 bit unsigned int, hue for top of light stick b
-        :param int b2:
-            8 bit unsigned int, hue for bottom of light stick b
-        :param int c1:
-            8 bit unsigned int, hue for top of light stick c
-        :param int c2:
-            8 bit unsigned int, hue for bottom of light stick c
+        :param float a:
+            Wheel a power, -1.0 to 1.0
+        :param float b:
+            Wheel a power, -1.0 to 1.0
+        :param float c:
+            Wheel a power, -1.0 to 1.0
         """
 
-    def get_encoder_values(self):
-        """
-        Retrieve encoder values from the arduino, these values are unsigned 16 bit integers
+        def float_to_byte(f):
+            i = int((f + 1.0) * 128.0)
+            if i < 0:
+                i = 0
+            elif i > 255:
+                i = 255
+            return i
 
-        :return:
-            an array of ints containing the encoder values for wheels a, b, and c.
-        """
+        motor_values = [float_to_byte(a),
+                        float_to_byte(b),
+                        float_to_byte(c)]
+
+        # Sometimes get IOError when sending due to clock stretch, a simple retry normally fixes it.
+        success = False
+        while not success:
+            try:
+                self.bus.write_i2c_block_data(ARDUINO_ADDRESS, DEVICE_MOTORS, motor_values)
+                success = True
+            except IOError:
+                print('IOError, retrying')
