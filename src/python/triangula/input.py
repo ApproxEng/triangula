@@ -3,6 +3,7 @@ __author__ = 'tom'
 from asyncore import file_dispatcher, loop
 
 from evdev import InputDevice, list_devices
+from threading import Thread
 
 
 class SixAxis():
@@ -71,7 +72,7 @@ class SixAxis():
         :return: an initialised link to an attached PS3 SixAxis controller
         """
 
-        self.sixaxis = None
+        self.stop_function = None
         self.axes = [SixAxis.Axis('left_x', dead_zone=dead_zone, hot_zone=hot_zone),
                      SixAxis.Axis('left_y', dead_zone=dead_zone, hot_zone=hot_zone, invert=True),
                      SixAxis.Axis('right_x', dead_zone=dead_zone, hot_zone=hot_zone),
@@ -80,7 +81,7 @@ class SixAxis():
         self.connect()
 
     def connect(self):
-        if self.sixaxis:
+        if self.stop_function:
             return
         for device in [InputDevice(fn) for fn in list_devices()]:
             if device.name == 'PLAYSTATION(R)3 Controller':
@@ -100,7 +101,16 @@ class SixAxis():
                             parent.handle_event(event)
 
                 InputDeviceDispatcher()
-                loop()
+
+                class AsyncLoop(Thread):
+                    def __init__(self):
+                        Thread.__init__(self, name='InputDispatchThread')
+
+                    def run(self):
+                        loop()
+
+                self.stop_function = AsyncLoop()
+                self.stop_function.start()
 
     def __str__(self):
         return 'x1={}, y1={}, x2={}, y2={}'.format(
@@ -150,6 +160,7 @@ class SixAxis():
         return remove
 
     def handle_event(self, event):
+        print event
         if event.type == 3:
             value = (event.value - 128.0) / 128.0
             if event.code == 0:
