@@ -6,7 +6,25 @@ from threading import Thread
 from evdev import InputDevice, list_devices, ecodes
 
 
-class SixAxis():
+class SixAxisResource:
+    """
+    Resource class which will automatically connect and disconnect to and from a joystick, creating a new SixAxis
+    object and passing it to the 'with' clause. Also binds a handler to the START button which resets the axis
+    calibration, and to the SELECT button which centres the analogue sticks on the current position.
+    """
+
+    def __enter__(self):
+        self.joystick = SixAxis()
+        self.joystick.connect()
+        self.joystick.register_button_handler(self.joystick.reset_axis_calibration, SixAxis.BUTTON_START)
+        self.joystick.register_button_handler(self.joystick.set_axis_centres, SixAxis.BUTTON_SELECT)
+        return self.joystick
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.joystick.disconnect()
+
+
+class SixAxis:
     """
     Class to handle the PS3 SixAxis controller
 
@@ -41,7 +59,7 @@ class SixAxis():
     BUTTON_SQUARE = 15  #: Square
     BUTTON_PS = 16  #: PS button
 
-    def __init__(self, dead_zone=0.0, hot_zone=0.0, connect=False):
+    def __init__(self, dead_zone=0.05, hot_zone=0.0, connect=False):
         """
         Discover and initialise a PS3 SixAxis controller connected to this computer.
 
@@ -351,6 +369,7 @@ class SixAxis():
                 self.max = new_value
             elif new_value < self.min:
                 self.min = new_value
+
 
 if __name__ == '__main__':
     from input import SixAxis
