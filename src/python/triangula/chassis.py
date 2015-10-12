@@ -155,13 +155,13 @@ class HoloChassis:
             d = point - origin
             return d.normalized().cross() * abs(d) * rotation + translation
 
-        wheel_speeds = (wheel.speed(velocity_at(wheel.position)) for wheel in self.wheels)
+        wheel_speeds = list(wheel.speed(velocity_at(wheel.position)) for wheel in self.wheels)
         scale = 1.0
         for speed, wheel in zip(wheel_speeds, self.wheels):
             if wheel.max_speed is not None and abs(speed) > wheel.max_speed:
                 wheel_scale = wheel.max_speed / abs(speed)
                 scale = min(scale, wheel_scale)
-        return WheelSpeeds(speeds=list(speed / scale for speed in wheel_speeds), scaling=scale)
+        return WheelSpeeds(speeds=list(speed * scale for speed in wheel_speeds), scaling=scale)
 
     class OmniWheel:
         """
