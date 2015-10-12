@@ -1,10 +1,6 @@
-import pygame.event as pg_event
-
-from pygame import JOYAXISMOTION, JOYBUTTONDOWN
-from os import environ
-import pygame
-
 __author__ = 'tom'
+
+from evdev import InputDevice, list_devices
 
 
 class SixAxis():
@@ -42,7 +38,7 @@ class SixAxis():
     BUTTON_SQUARE = 15  #: Square
     BUTTON_PS = 16  #: PS button
 
-    def __init__(self, dead_zone=0.2, hot_zone=0.1, init_pygame=True):
+    def __init__(self, dead_zone=0.2, hot_zone=0.05, init_pygame=True):
         """
         Discover and initialise a PS3 SixAxis controller connected to this computer
 
@@ -72,29 +68,19 @@ class SixAxis():
             performed in this method, it's safe to run multiple times anyway)
         :return: an initialised link to an attached PS3 SixAxis controller
         """
-        if init_pygame:
-            environ['SDL_VIDEODRIVER'] = 'dummy'
-            pygame.init()
-            pygame.display.set_mode((1, 1))
-        pygame.joystick.init()
-        sixaxis = None
-        for joystick_index in range(pygame.joystick.get_count()):
-            joystick = pygame.joystick.Joystick(joystick_index)
-            joystick.init()
-            if joystick.get_name() == 'PLAYSTATION(R)3 Controller':
-                sixaxis = joystick
-                self.active_index = joystick_index
-                break
-        if sixaxis is None:
-            raise ValueError('No PS3 controller detected')
-        pg_event.set_allowed(None)
-        pg_event.set_allowed([JOYAXISMOTION, JOYBUTTONDOWN])
-        pg_event.clear()
+
+        self.sixaxis = None
         self.axes = [SixAxis.Axis('left_x', dead_zone=dead_zone, hot_zone=hot_zone),
                      SixAxis.Axis('left_y', dead_zone=dead_zone, hot_zone=hot_zone, invert=True),
                      SixAxis.Axis('right_x', dead_zone=dead_zone, hot_zone=hot_zone),
                      SixAxis.Axis('right_y', dead_zone=dead_zone, hot_zone=hot_zone, invert=True)]
         self.button_handlers = []
+        self.connect()
+
+    def connect(self):
+        for device in [InputDevice(fn) for fn in list_devices()]:
+            if device.name == 'PLAYSTATION(R)3 Controller':
+                self.sixaxis = device
 
     def __str__(self):
         return 'x1={}, y1={}, x2={}, y2={}'.format(
@@ -144,6 +130,23 @@ class SixAxis():
         return remove
 
     def handle_events(self):
+        if self.sixaxis is not None:
+            for event in self.sixaxis.read_loop():
+                if event.type == 3:
+                    value = (event.value - 128.0) / 128.0
+                    if event.code == 0:
+                        # Left stick, X axis
+                        self.axes[0]._set(value)
+                    elif event.code == 1:
+                        # Left stick, Y axis
+                        self.axes[1]._set(value)
+                    elif event.code == 2:
+                        # Right stick, X axis
+                        self.axes[2]._set(value)
+                    elif event.code == 5:
+                        # Right stick, Y axis (yes, 5...)
+                        self.axes[3]._set(value)
+        """
         for event in pg_event.get():
             if event.type == JOYAXISMOTION and event.joy == self.active_index:
                 if event.axis < len(self.axes):
@@ -152,11 +155,12 @@ class SixAxis():
                 for handler in self.button_handlers:
                     if handler['mask'] & (1 << event.button) != 0:
                         handler['handler'](event.button)
+        """
 
     class Axis():
         """A single analogue axis on the SixAxis controller"""
 
-        def __init__(self, name, invert=False, dead_zone=0.0, hot_zone=1.0):
+        def __init__(self, name, invert=False, dead_zone=0.0, hot_zone=0.0):
             self.name = name
             self.centre = 0.0
             self.max = 0.9
@@ -179,12 +183,19 @@ class SixAxis():
             """
 
             centred = self.value - self.centre
+
             if abs(centred) <= self.dead_zone:
                 return 0.0
             elif centred > 0 and self.value > self.max - (self.hot_zone * self.max):
-                return 1.0
+                if not self.invert:
+                    return 1.0
+                else:
+                    return -1.0
             elif centred < 0 and self.value < self.min - (self.hot_zone * self.min):
-                return -1.0
+                if not self.invert:
+                    return -1.0
+                else:
+                    return 1.0
 
             if centred > 0:
                 top_range = self.max - (self.hot_zone * self.max + self.dead_zone)
@@ -195,6 +206,7 @@ class SixAxis():
 
             if self.invert:
                 result = -result
+
             return result
 
         def _reset(self):
