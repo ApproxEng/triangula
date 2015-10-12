@@ -119,6 +119,30 @@ class HoloChassis:
         """
         self.wheels = wheels
 
+    def get_max_translation_speed(self):
+        """
+        Calculate the maximum translation speed, assuming all directions are equivalent and that there is no rotation
+        component to the motion.
+
+        :return:
+            Maximum speed in millimetres per second as a float
+        """
+        unrealistic_speed = 10000.0
+        scaling = self.get_wheel_speeds(translation=Vector2(0, unrealistic_speed), rotation=0).scaling
+        return unrealistic_speed * scaling
+
+    def get_max_rotation_speed(self):
+        """
+        Calculate the maximum rotation speed around the origin in radians per second, assuming no translation motion
+        at the same time.
+
+        :return:
+            Maximum radians per second as a float
+        """
+        unrealistic_speed = 2 * pi * 100
+        scaling = self.get_wheel_speeds(translation=Vector2(0, 0), rotation=unrealistic_speed).scaling
+        return unrealistic_speed * scaling
+
     def get_wheel_speeds(self, translation, rotation, origin=Point2(x=0, y=0)):
         """
         Calculate speeds to drive each wheel in the chassis at to attain the specified rotation / translation 3-vector.
