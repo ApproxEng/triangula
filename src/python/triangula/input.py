@@ -66,7 +66,7 @@ class SixAxis:
         :param float dead_zone:
             Creates a dead zone centred on the centre position of the axis (which may or may not be zero depending on
             calibration). The axis values range from 0 to 1.0, but will be locked to 0.0 when the measured value less
-            centre offset is lower in magnitude than this supplied value. Defaults to 0.2, which makes the PS3 analogue
+            centre offset is lower in magnitude than this supplied value. Defaults to 0.05, which makes the PS3 analogue
             sticks easy to centre but still responsive to motion. The deadzone is applies to each axis independently, so
             e.g. moving the stick far right won't affect the deadzone for that sticks Y axis.
         :param float hot_zone:
