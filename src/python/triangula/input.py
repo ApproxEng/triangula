@@ -216,7 +216,7 @@ class SixAxis:
         for axis in self.axes:
             axis._reset()
 
-    def register_button_handler(self, handler, buttons):
+    def register_button_handler(self, button_handler, buttons):
         """
         Register a handler function which will be called when a button is pressed
 
@@ -234,7 +234,7 @@ class SixAxis:
                 mask += 1 << button
         else:
             mask += 1 << buttons
-        h = {'handler': handler,
+        h = {'handler': button_handler,
              'mask': mask}
         self.button_handlers.append(h)
 
@@ -311,9 +311,9 @@ class SixAxis:
                 else:
                     button = None
                 if button:
-                    for handler in self.button_handlers:
-                        if handler['mask'] & (1 << button) != 0:
-                            handler['handler'](button)
+                    for button_handler in self.button_handlers:
+                        if button_handler['mask'] & (1 << button) != 0:
+                            button_handler['handler'](button)
 
     class Axis():
         """A single analogue axis on the SixAxis controller"""
