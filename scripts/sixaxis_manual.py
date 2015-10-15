@@ -27,9 +27,8 @@ print (max_trn, max_rot)
 arduino = triangula.arduino.Arduino()
 
 # Get a joystick, this will fail unless the SixAxis controller is paired and active
-with triangula.input.SixAxisResource() as joystick:
+with triangula.input.SixAxisResource(bind_defaults=True) as joystick:
     while 1:
-
         # Get a vector from the left hand analogue stick and scale it up to our
         # maximum translation speed, this will mean we go as fast directly forwards
         # as possible when the stick is pushed fully forwards

@@ -28,7 +28,8 @@ Software
 --------
 
 Note 1 - this assumes you've set up git and installed a public key with github, you don't have to do this but you'll
-need to modify some of the git commands below if you haven't.
+need to modify some of the git commands below if you haven't. You can set up public keys using the instructions at
+https://help.github.com/articles/generating-ssh-keys/#platform-all
 
 Note 2 - this is also assuming you're starting from a clean installation of the latest Jessie based Raspbian. Other
 distributions may need varying combinations of dev libraries etc.
