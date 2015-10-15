@@ -52,4 +52,4 @@ class Arduino:
                 self.bus.write_i2c_block_data(ARDUINO_ADDRESS, DEVICE_MOTORS, motor_values)
                 success = True
             except IOError:
-                print('IOError, retrying')
+                pass
