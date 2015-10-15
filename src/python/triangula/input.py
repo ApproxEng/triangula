@@ -311,6 +311,7 @@ class SixAxis:
                 else:
                     button = None
                 if button:
+                    print button
                     for button_handler in self.button_handlers:
                         if button_handler['mask'] & (1 << button) != 0:
                             button_handler['handler'](button)
