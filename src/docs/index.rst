@@ -10,6 +10,7 @@ Contents:
 
     config
     api
+    sixaxis
 
 Indices and tables
 ==================

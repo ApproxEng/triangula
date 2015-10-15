@@ -3,7 +3,10 @@ __author__ = 'tom'
 from asyncore import file_dispatcher, loop
 from threading import Thread
 
-from evdev import InputDevice, list_devices, ecodes
+try:
+    from evdev import InputDevice, list_devices, ecodes
+except ImportError:
+    print 'Not importing evdev, expected during sphinx generation on OSX'
 
 
 class SixAxisResource:
@@ -13,11 +16,28 @@ class SixAxisResource:
     calibration, and to the SELECT button which centres the analogue sticks on the current position.
     """
 
+    def __init__(self, bind_defaults=False, dead_zone=0.05, hot_zone=0.0):
+        """
+        Resource class, produces a :class:`triangula.input.SixAxis` for use in a 'with' binding.
+
+        :param float dead_zone:
+            See SixAxis class documentation
+        :param float hot_zone:
+            See SixAxis class documentation
+        :param bind_defaults:
+            Defaults to False, if True will automatically bind two actions to the START and SELECT buttons to
+            reset the axis calibration and to set the axis centres respectively.
+        """
+        self.bind_defaults = bind_defaults
+        self.dead_zone = dead_zone
+        self.hot_zone = hot_zone
+
     def __enter__(self):
-        self.joystick = SixAxis()
+        self.joystick = SixAxis(dead_zone=self.dead_zone, hot_zone=self.hot_zone)
         self.joystick.connect()
-        self.joystick.register_button_handler(self.joystick.reset_axis_calibration, SixAxis.BUTTON_START)
-        self.joystick.register_button_handler(self.joystick.set_axis_centres, SixAxis.BUTTON_SELECT)
+        if self.bind_defaults:
+            self.joystick.register_button_handler(self.joystick.reset_axis_calibration, SixAxis.BUTTON_START)
+            self.joystick.register_button_handler(self.joystick.set_axis_centres, SixAxis.BUTTON_SELECT)
         return self.joystick
 
     def __exit__(self, exc_type, exc_value, traceback):
@@ -28,13 +48,12 @@ class SixAxis:
     """
     Class to handle the PS3 SixAxis controller
 
-    This class will process events from the pygame event queue and calculate positions for each of the analogue axes on
-    the SixAxis controller (excluding the motion sensor which appears not to work for some reason). It will also extract
+    This class will process events from the evdev event queue and calculate positions for each of the analogue axes on
+    the SixAxis controller (motion sensing is not currently supported). It will also extract
     button press events and call any handler functions bound to those buttons.
 
-    Events are only processed when the handle_events method is called, this must be called reasonably frequently as the
-    pygame event queue will discard events once full and the joystick hardware is sufficiently twitchy that it's
-    generating events pretty much constantly.
+    Once the connect() call is made, a thread is created which will actively monitor the device for events, passing them
+    to the SixAxis class for processing. There is no need to poll the event queue manually.
 
     Consuming code can get the current position of any of the sticks from this class through the `axes` instance
     property. This contains a list of :class:`triangula.input.SixAxis.Axis` objects, one for each distinct axis on the
@@ -101,6 +120,7 @@ class SixAxis:
     def is_connected(self):
         """
         Check whether we have a connection
+
         :return:
             True if we're connected to a controller, False otherwise.
         """
