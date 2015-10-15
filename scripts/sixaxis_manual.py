@@ -2,11 +2,13 @@
 # robot's axis, right hand X axis controls rotation around the centre of the robot.
 
 import time
+
 import triangula.imu
 import triangula.chassis
 import triangula.arduino
 import triangula.input
 from euclid import Vector2, Point2
+
 
 
 # Construct a HoloChassis object to perform drive calculations, using the convenience
@@ -29,34 +31,58 @@ print (max_trn, max_rot)
 # Connect to the Arduino Nano over I2C, motors and lights are attached to the nano
 arduino = triangula.arduino.Arduino()
 
-config = { 'bearing_zero': 0.0 }
+# Hold whether we're navigating in relative or absolute terms, and what our correction is
+state = {'bearing_zero': None,
+         'last_bearing': 0.0}
 
-def reset_bearing(button):
-    config['bearing_zero'] = last_bearing
-    print 'Hello!'
-    print config['bearing_zero']
 
-last_bearing = 0
+def set_absolute_motion(button):
+    """
+    Lock motion to be compass relative, zero point (forwards) is the current bearing
+    """
+    print 'Absolute motion enabled'
+    state['bearing_zero'] = state['last_bearing']
+
+
+def set_relative_motion(button):
+    """
+    Set motion to be relative to the robot's reference frame
+    """
+    print 'Relative motion enabled'
+    state['bearing_zero'] = None
+
 
 # Get a joystick, this will fail unless the SixAxis controller is paired and active, in which case
-# we wait for a second and try again.
+# we wait for a second and try again. Compass locked motion on pressing SQUARE, relative on pressing
+# TRIANGLE, starts with relative motion.
 while 1:
     try:
         with triangula.input.SixAxisResource(bind_defaults=True) as joystick:
+
             print('Found controller')
-	    joystick.register_button_handler(reset_bearing, triangula.input.SixAxis.BUTTON_SQUARE)
+
+            # Bind motion mode buttons
+            joystick.register_button_handler(set_absolute_motion, triangula.input.SixAxis.BUTTON_SQUARE)
+            joystick.register_button_handler(set_relative_motion, triangula.input.SixAxis.BUTTON_TRIANGLE)
+
             while 1:
-		bearing = triangula.imu.read()['fusionPose'][2]
-		if bearing is not None:
-		    last_bearing = bearing
+
+                # Read the current fusion pose from the IMU, getting the bearing
+                bearing = triangula.imu.read()['fusionPose'][2]
+                if bearing is not None:
+                    state['last_bearing'] = bearing
+
                 # Get a vector from the left hand analogue stick and scale it up to our
                 # maximum translation speed, this will mean we go as fast directly forwards
                 # as possible when the stick is pushed fully forwards
                 translate = Vector2(
                     joystick.axes[0].corrected_value(),
                     joystick.axes[1].corrected_value()) * max_trn
-		translate = triangula.chassis.rotate_vector(translate, last_bearing-config['bearing_zero'])
 
+                # If we're in absolute mode, rotate the translation vector appropriately
+                if state['bearing_zero'] is not None:
+                    translate = triangula.chassis.rotate_vector(translate,
+                                                                state['last_bearing'] - state['bearing_zero'])
 
                 # Get the rotation in radians per second from the right hand stick's X axis,
                 # scaling it to our maximum rotational speed. When standing still this means
@@ -81,6 +107,7 @@ while 1:
                 # line as well as lighting up a neopixel ring to provide additional feedback
                 # and bling.
                 arduino.set_motor_power(speeds[0], speeds[1], speeds[2])
+
     except IOError:
         print('Waiting for controller')
         time.sleep(1)

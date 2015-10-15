@@ -272,7 +272,6 @@ class SixAxis:
                 # Right stick, Y axis (yes, 5...)
                 self.axes[3]._set(value)
         elif event.type == ecodes.EV_KEY:
-            print(event.type, event.code, event.value)
             if event.value == 1:
                 if event.code == 288:
                     button = SixAxis.BUTTON_SELECT
@@ -312,7 +311,6 @@ class SixAxis:
                     button = None
                 if button:
                     for button_handler in self.button_handlers:
-                        print button_handler, button, 1<<button, button_handler['mask']& (1 << button)
                         if button_handler['mask'] & (1 << button) != 0:
                             button_handler['handler'](button)
 
