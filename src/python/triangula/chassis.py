@@ -97,6 +97,21 @@ class WheelSpeeds:
     """
 
     def __init__(self, speeds, scaling):
+        """
+        Create a new wheel speeds container
+
+        :param speeds:
+            A sequence of float values, one per wheel, in revolutions per second
+        :param float scaling:
+            If a requested translation or rotation was too fast for the chassis to perform, it will return an instance
+            of this class with the scaling set to a value greater than 1.0. This indicates that it was unable to
+            provide the requested trajectory but has instead provided the highest magnitude one possible. This parameter
+            then contains the proportion of the requested trajectory that was possible to provide. For example, if
+            the motion requested was a translation of 10mm/s in the X axis and a rotation of 10 radians per second, but
+            on calculation this resulted in excessive wheel speeds which weren't possible, it might be scaled back to
+            6mm/s on X and 6 radians per second - the motion is proportionately the same just slower, and in this case
+            the scaling value would be 0.6.
+        """
         self.speeds = speeds
         self.scaling = scaling
 
