@@ -2,7 +2,7 @@
 # robot's axis, right hand X axis controls rotation around the centre of the robot.
 
 import time
-
+import triangula.imu
 import triangula.chassis
 import triangula.arduino
 import triangula.input
@@ -29,19 +29,34 @@ print (max_trn, max_rot)
 # Connect to the Arduino Nano over I2C, motors and lights are attached to the nano
 arduino = triangula.arduino.Arduino()
 
+config = { 'bearing_zero': 0.0 }
+
+def reset_bearing(button):
+    config['bearing_zero'] = last_bearing
+    print 'Hello!'
+    print config['bearing_zero']
+
+last_bearing = 0
+
 # Get a joystick, this will fail unless the SixAxis controller is paired and active, in which case
 # we wait for a second and try again.
 while 1:
     try:
         with triangula.input.SixAxisResource(bind_defaults=True) as joystick:
             print('Found controller')
+	    joystick.register_button_handler(reset_bearing, triangula.input.SixAxis.BUTTON_SQUARE)
             while 1:
+		bearing = triangula.imu.read()['fusionPose'][2]
+		if bearing is not None:
+		    last_bearing = bearing
                 # Get a vector from the left hand analogue stick and scale it up to our
                 # maximum translation speed, this will mean we go as fast directly forwards
                 # as possible when the stick is pushed fully forwards
                 translate = Vector2(
                     joystick.axes[0].corrected_value(),
                     joystick.axes[1].corrected_value()) * max_trn
+		translate = triangula.chassis.rotate_vector(translate, last_bearing-config['bearing_zero'])
+
 
                 # Get the rotation in radians per second from the right hand stick's X axis,
                 # scaling it to our maximum rotational speed. When standing still this means
