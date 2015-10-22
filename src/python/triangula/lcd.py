@@ -24,7 +24,8 @@ class LCD():
         """
         Set the text for either or both rows, send the updated values to the display. In order to fit on our display
         both rows must be at most sixteen characters in length. The display controller actually accepts 40 character
-        rows but the display won't display them!
+        rows but the display won't display them! This will trim any strings to 16 characters as that's the maximum
+        length of our rows
 
         :param row1:
             Text for row 1
@@ -32,9 +33,9 @@ class LCD():
             Text for row 2
         """
         if row1 is not None:
-            self.row1 = row1
+            self.row1 = row1[:16]
         if row2 is not None:
-            self.row2 = row2
+            self.row2 = row2[:16]
         self._update()
 
     def set_backlight(self, red=0, green=0, blue=0):
@@ -92,9 +93,9 @@ class LCD():
 
         :internal:
         """
+        self.clear()
         padded_row1 = self.row1 + ' ' * (40 - len(self.row1))
-        padded_row2 = self.row2 + ' ' * (16 - len(self.row2))
-        self._send('pd' + padded_row1 + padded_row2)
+        self._send('pd' + padded_row1 + self.row2)
 
     def _send(self, command):
         """
