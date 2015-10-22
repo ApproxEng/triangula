@@ -7,6 +7,8 @@ import triangula.imu
 import triangula.chassis
 import triangula.arduino
 import triangula.input
+import triangula.lcd
+import triangula.util
 from euclid import Vector2, Point2
 
 
@@ -35,20 +37,26 @@ arduino = triangula.arduino.Arduino()
 state = {'bearing_zero': None,
          'last_bearing': 0.0}
 
+# Start up the display, show the IP address
+lcd = triangula.lcd.LCD()
+lcd.set_text(row1='Triangula', row2=triangula.util.get_ip_address())
 
-def set_absolute_motion(button):
+
+def set_absolute_motion(button=None):
     """
     Lock motion to be compass relative, zero point (forwards) is the current bearing
     """
-    print 'Absolute motion enabled'
+    lcd.set_text(row1='Absolute Motion')
+    lcd.set_backlight(0, 10, 0)
     state['bearing_zero'] = state['last_bearing']
 
 
-def set_relative_motion(button):
+def set_relative_motion(button=None):
     """
     Set motion to be relative to the robot's reference frame
     """
-    print 'Relative motion enabled'
+    lcd.set_text(row1='Relative Motion')
+    lcd.set_backlight(10, 0, 0)
     state['bearing_zero'] = None
 
 
@@ -64,6 +72,7 @@ while 1:
             # Bind motion mode buttons
             joystick.register_button_handler(set_absolute_motion, triangula.input.SixAxis.BUTTON_SQUARE)
             joystick.register_button_handler(set_relative_motion, triangula.input.SixAxis.BUTTON_TRIANGLE)
+            set_relative_motion()
 
             while 1:
 
