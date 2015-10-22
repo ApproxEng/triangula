@@ -93,7 +93,7 @@ class LCD():
         :internal:
         """
         padded_row1 = self.row1 + ' ' * (40 - len(self.row1))
-        padded_row2 = self.row2 + ' ' * (40 - len(self.row2))
+        padded_row2 = self.row2 + ' ' * (16 - len(self.row2))
         self._send('pd' + padded_row1 + padded_row2)
 
     def _send(self, command):
