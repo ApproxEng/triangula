@@ -17,10 +17,7 @@ def mirror_coord(c):
         A flattened (Z set to 0) and optionally mirrored, copy of the input
     """
     (x, y, z) = c
-    if z < 0:
-        return (-x, y, 0)
-    return (x, y, 0)
-
+    return (-x, y, 0)
 
 def mirror(a):
     """
@@ -28,7 +25,7 @@ def mirror(a):
     """
     a = 180 - a
     if a < 0:
-        a = a + 360
+        a += 360
     return a
 
 
@@ -43,16 +40,17 @@ def main(inputfile, outputfile):
     """
     dwg = ezdxf.readfile(inputfile)
     for e in dwg.entities:
-        if e.dxftype() == 'CIRCLE':
-            e.dxf.center = mirror_coord(e.dxf.center)
-        elif e.dxftype() == 'ARC':
-            (x, y, z) = e.dxf.center
-            if z < 0:
+        (x,y,z) = e.dxf.extrusion
+        if z < 0:
+            if e.dxftype() == 'CIRCLE':
+                e.dxf.center = mirror_coord(e.dxf.center)
+            elif e.dxftype() == 'ARC':
                 start_angle = e.dxf.start_angle
                 end_angle = e.dxf.end_angle
                 e.dxf.start_angle = mirror(end_angle)
                 e.dxf.end_angle = mirror(start_angle)
-            e.dxf.center = mirror_coord(e.dxf.center)
+                e.dxf.center = mirror_coord(e.dxf.center)
+        e.dxf.extrusion = (0,0,1.0)
     dwg.saveas(outputfile)
 
 
