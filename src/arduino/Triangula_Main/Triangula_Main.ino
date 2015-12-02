@@ -1,20 +1,29 @@
 
-/**
+//#define ENABLE_MOTOR_FUNCTIONS
+
+/*
    Simple sketch to directly control the Syren drivers. Send an I2C message containing 3 bytes, one
-   for each motor, these are converted to values in the range -128 to 127 and sent to the motor drivers
+   for each motor, these are converted to values in the range -128 to 127 and sent to the motor drivers.
+   Also handles lighting and reporting of encoder values in response to a bulk data request.
 */
 #include <Adafruit_NeoPixel.h>
 #include "Triangula_NeoPixel.h"
 #include <Wire.h>
+#ifdef ENABLE_MOTOR_FUNCTIONS
 #include <Sabertooth.h>
+#endif
 
+// Address to receive messages from the I2C master
 #define SLAVE_ADDRESS  0x70
 
+// Command codes
 #define MOTOR_SPEED_SET 0x20
 #define SET_SOLID_COLOUR 0x21
 #define ENCODER_READ 0x22
 
+// Register map array size in bytes
 #define REG_MAP_SIZE   6
+// Maximum length of a command
 #define MAX_SENT_BYTES 4
 
 // Set frequency to poll encoder counts when calculating velocity. Higher values will cause faster
@@ -51,8 +60,11 @@ byte registerMap[REG_MAP_SIZE];
 byte receivedCommands[MAX_SENT_BYTES];
 volatile boolean newDataAvailable = false;
 
+#ifdef ENABLE_MOTOR_FUNCTIONS
 // Motor drivers, must be configured in packet serial mode with addresses 128, 129 and 130
 Sabertooth ST[3] = { Sabertooth(128), Sabertooth(129), Sabertooth(130) };
+#endif
+
 // Lights
 Triangula_NeoPixel pixels = Triangula_NeoPixel();
 
@@ -65,8 +77,10 @@ void setup() {
   // Start up connection to Syren motor controllers, setting baud rate
   // then waiting two seconds to allow the drivers to power up and sending
   // the auto-calibration signal to all controllers on the same bus
-  //SabertoothTXPinSerial.begin(9600);
-  //Sabertooth::autobaud(SabertoothTXPinSerial);
+#ifdef ENABLE_MOTOR_FUNCTIONS
+  SabertoothTXPinSerial.begin(9600);
+  Sabertooth::autobaud(SabertoothTXPinSerial);
+#endif
   // Stop interrupts
   cli();
   // Configure port 0, pins 8-13, as inputs
@@ -79,24 +93,14 @@ void setup() {
   PCICR |= (1 << PCIE0);
   // Un-mask all pins
   PCMSK0 = 63;
-  // Set timer 1 interrupt
-  TCCR1A = 0;// set entire TCCR1A register to 0
-  TCCR1B = 0;// same for TCCR1B
-  TCNT1  = 0;//initialize counter value to 0
-  // set compare match register for 50hz increments
-  OCR1A = (15625 / velocityTimerHertz) - 1;// = (16*10^6) / (50*1024) - 1 (must be <65536)
-  // turn on CTC mode
-  TCCR1B |= (1 << WGM12);
-  // Set CS10 and CS12 bits for 1024 prescaler
-  TCCR1B |= (1 << CS12) | (1 << CS10);
-  // enable timer compare interrupt
-  TIMSK1 |= (1 << OCIE1A);
   // Enable interrupts
   sei();
 
-  //for (int i = 0; i < 3; i++) {
-  //  ST[i].motor(0);
-  //}
+#ifdef ENABLE_MOTOR_FUNCTIONS
+  for (int i = 0; i < 3; i++) {
+    ST[i].motor(0);
+  }
+#endif
   pixels.setSolidColour(170, 255, 60);
   pixels.show();
 }
@@ -107,6 +111,7 @@ void loop() {
     uint8_t i2c_command = receivedCommands[0];
     switch (i2c_command) {
       case MOTOR_SPEED_SET:
+#ifdef ENABLE_MOTOR_FUNCTIONS
         for (int i = 1; i < MAX_SENT_BYTES; i++) {
           registerMap[i - 1] = receivedCommands[i];
         }
@@ -114,6 +119,7 @@ void loop() {
           ST[i].motor(((int)(receivedCommands[i + 1])) - 128);
         }
         setColours(registerMap, REG_MAP_SIZE, 8, 0);
+#endif
         break;
       case SET_SOLID_COLOUR:
         pixels.setSolidColour(receivedCommands[1], receivedCommands[2], receivedCommands[3]);
@@ -124,10 +130,12 @@ void loop() {
         pixels.show();
         break;
       default:
+#ifdef ENABLE_MOTOR_FUNCTIONS
         // Unknown command, stop the motors.
         for (int i = 0; i < 3; i++) {
           ST[i].motor(0);
         }
+#endif
         pixels.setSolidColour(0, 255, 50);
         pixels.show();
         break;
@@ -138,12 +146,12 @@ void loop() {
 // Called on I2C data request
 void requestEvent() {
   byte data[] = {(byte)((pos_a & 0xff00) >> 8),
-                    (byte)(pos_a & 0xff),
-                    (byte)((pos_b & 0xff00) >> 8),
-                    (byte)(pos_b & 0xff),
-                    (byte)((pos_c & 0xff00) >> 8),
-                    (byte)(pos_c & 0xff)
-                   };
+                 (byte)(pos_a & 0xff),
+                 (byte)((pos_b & 0xff00) >> 8),
+                 (byte)(pos_b & 0xff),
+                 (byte)((pos_c & 0xff00) >> 8),
+                 (byte)(pos_c & 0xff)
+                };
   Serial.println("a");
   Serial.println(data[0]);
   Serial.println("b");
@@ -160,7 +168,7 @@ void requestEvent() {
 
   Serial.println("f");
   Serial.println(data[5]);
-  Serial.println(Wire.write(data,6));
+  Serial.println(Wire.write(data, 6));
 
 }
 
@@ -221,56 +229,6 @@ ISR (PCINT0_vect) {
   encoder_a = a;
   encoder_b = b;
   encoder_c = c;
-}
-
-// Where we currently are within the track
-byte trackPos = 0;
-// Track [trackLength] values of historic encoder positions
-unsigned int track_a[trackLength];
-unsigned int track_b[trackLength];
-unsigned int track_c[trackLength];
-
-/*
-  Handle timer interrupt
-  Each tick we stash the current value of the absolute position for each encoder, then walk
-  back in time in the buffer until we have at least a certain magnitude delta, at which point
-  we set the velocity value for that encoder to be the difference divided by the number of
-  steps back in time. The length of the buffer and the frequency of the timer along with the
-  minimum delta define the precision and latency of the velocity detection.
-*/
-ISR (TIMER1_COMPA_vect) {
-  // Write current absolute encoder values into the track arrays
-  track_a[trackPos] = pos_a;
-  track_b[trackPos] = pos_b;
-  track_c[trackPos] = pos_c;
-  // Try to work out velocity based on track history
-  vel_a = velocity(track_a);
-  vel_b = velocity(track_b);
-  vel_c = velocity(track_c);
-  // Increment and wrap track position
-  trackPos++;
-  if (trackPos >= trackLength) {
-    trackPos -= trackLength;
-  }
-}
-
-double velocity(unsigned int track[]) {
-  unsigned int current = track[trackPos];
-  unsigned int past;
-  double dif;
-  for (int d = 1; d < trackLength; d++) {
-    int pastIndex = trackPos - d;
-    if (pastIndex < 0) {
-      pastIndex += trackLength;
-    }
-    past = track[pastIndex];
-    dif = difference(past, current);
-    if (abs(dif) >= targetDelta) {
-      return dif / (double)d;
-    }
-  }
-  // Fallen off the end of the loop, return best guess
-  return dif / (trackLength - 1);
 }
 
 // Set colours based on the signal received from the Pi
