@@ -12,8 +12,9 @@
 
 #define MOTOR_SPEED_SET 0x20
 #define SET_SOLID_COLOUR 0x21
+#define ENCODER_READ 0x22
 
-#define REG_MAP_SIZE   3
+#define REG_MAP_SIZE   6
 #define MAX_SENT_BYTES 4
 
 // Set frequency to poll encoder counts when calculating velocity. Higher values will cause faster
@@ -64,8 +65,8 @@ void setup() {
   // Start up connection to Syren motor controllers, setting baud rate
   // then waiting two seconds to allow the drivers to power up and sending
   // the auto-calibration signal to all controllers on the same bus
-  SabertoothTXPinSerial.begin(9600);
-  Sabertooth::autobaud(SabertoothTXPinSerial);
+  //SabertoothTXPinSerial.begin(9600);
+  //Sabertooth::autobaud(SabertoothTXPinSerial);
   // Stop interrupts
   cli();
   // Configure port 0, pins 8-13, as inputs
@@ -93,14 +94,10 @@ void setup() {
   // Enable interrupts
   sei();
 
-  pixels.setSolidColour(1, 255, 255);
-  pixels.show();
-
-  delay(1000);
-  for (int i = 0; i < 3; i++) {
-    ST[i].motor(0);
-  }
-  pixels.setSolidColour(150, 255, 255);
+  //for (int i = 0; i < 3; i++) {
+  //  ST[i].motor(0);
+  //}
+  pixels.setSolidColour(170, 255, 60);
   pixels.show();
 }
 
@@ -122,12 +119,17 @@ void loop() {
         pixels.setSolidColour(receivedCommands[1], receivedCommands[2], receivedCommands[3]);
         pixels.show();
         break;
+      case ENCODER_READ:
+        pixels.setSolidColour(80, 255, 50);
+        pixels.show();
+        break;
       default:
         // Unknown command, stop the motors.
         for (int i = 0; i < 3; i++) {
           ST[i].motor(0);
         }
-        pixels.setSolidColour(0, 255, 255);
+        pixels.setSolidColour(0, 255, 50);
+        pixels.show();
         break;
     }
   }
@@ -135,18 +137,31 @@ void loop() {
 
 // Called on I2C data request
 void requestEvent() {
-  char a1 = (char)((pos_a & 0xff00) >> 8);
-  char b1 = (char)((pos_b & 0xff00) >> 8);
-  char c1 = (char)((pos_c & 0xff00) >> 8);
-  char a2 = (char)(pos_a & 0xff);
-  char b2 = (char)(pos_b & 0xff);
-  char c2 = (char)(pos_c & 0xff);
-  char values[] = {a1, a2, b1, b2, c1, c2};
-  Serial.println("Sending I2C response");
-  for (int i = 0; i < 6; i++) {
-    Serial.println(values[i]);
-  }
-  Wire.write(values);
+  byte data[] = {(byte)((pos_a & 0xff00) >> 8),
+                    (byte)(pos_a & 0xff),
+                    (byte)((pos_b & 0xff00) >> 8),
+                    (byte)(pos_b & 0xff),
+                    (byte)((pos_c & 0xff00) >> 8),
+                    (byte)(pos_c & 0xff)
+                   };
+  Serial.println("a");
+  Serial.println(data[0]);
+  Serial.println("b");
+
+  Serial.println(data[1]);
+  Serial.println("c");
+
+  Serial.println(data[2]);
+
+  Serial.println("d");
+  Serial.println(data[3]);
+  Serial.println("e");
+  Serial.println(data[4]);
+
+  Serial.println("f");
+  Serial.println(data[5]);
+  Serial.println(Wire.write(data,6));
+
 }
 
 // Called on I2C data reception

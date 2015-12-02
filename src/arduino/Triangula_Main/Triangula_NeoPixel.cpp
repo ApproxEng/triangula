@@ -36,9 +36,11 @@ uint32_t Triangula_NeoPixel::interpolate(uint32_t colour_a, uint32_t colour_b, f
 };
 
 // Get a 32-bit colour from a triple of hue, saturation and value
-uint32_t Triangula_NeoPixel::hsvToColour(uint8_t h, uint8_t s, uint8_t v) {
+uint32_t Triangula_NeoPixel::hsvToColour(uint8_t hue, uint8_t sat, uint8_t val) {
   unsigned char region, remainder, p, q, t;
-  h = (h + 256) % 256;
+  uint16_t h = (hue + 256) % 256;
+  uint16_t s = sat;
+  uint16_t v = val;
   if (s > 255) s = 255;
   if (v > 255) v = 255;
   else v = (v * v) >> 8;
