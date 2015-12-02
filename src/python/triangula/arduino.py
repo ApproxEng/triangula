@@ -36,7 +36,7 @@ class Arduino:
     def __init__(self):
         self.bus = smbus.SMBus(1)
 
-    def __send(self, register, data):
+    def _send(self, register, data):
         success = False
         retries = 4
         while not success:
@@ -49,7 +49,7 @@ class Arduino:
                     raise IOError("Can't communicate with I2C bus")
                 pass
 
-    def __read(self, register, bytes):
+    def _read(self, register, bytes):
         success = False
         while not success:
             try:
@@ -72,7 +72,7 @@ class Arduino:
                         float_to_byte(b),
                         float_to_byte(c)]
 
-        self.__send(DEVICE_MOTORS_SET, motor_values)
+        self._send(DEVICE_MOTORS_SET, motor_values)
 
     def set_lights(self, hue, saturation, value):
         """
@@ -82,14 +82,14 @@ class Arduino:
         :param value: 0-255 value
         """
         light_values = [check_byte(hue), check_byte(saturation), check_byte(value)]
-        self.__send(DEVICE_LIGHTS_SET, light_values)
+        self._send(DEVICE_LIGHTS_SET, light_values)
 
     def get_encoder_values(self):
         """
         Read data from the encoders, returning as a triple of what would be a uint16 if we had such things.
         :return: Triple of encoder values for each wheel.
         """
-        encoder_data = self.__read(0, 6)
+        encoder_data = self._read(0, 6)
         return [encoder_data[0] * 256 + encoder_data[1],
                 encoder_data[2] * 256 + encoder_data[3],
                 encoder_data[4] * 256 + encoder_data[5]]
