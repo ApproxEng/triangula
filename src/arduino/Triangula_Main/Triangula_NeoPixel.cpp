@@ -63,8 +63,16 @@ uint32_t Triangula_NeoPixel::hsvToColour(uint8_t h, uint8_t s, uint8_t v) {
   return Color(v, q, p);
 };
 
-void setCameraRing(uint8_t intensity) {
+void Triangula_NeoPixel::setCameraRing(uint8_t intensity) {
 };
 
-void setPylon(uint8_t pylonIndex, uint8_t saturation, uint8_t value, uint8_t hue_top, uint8_t hue_bottom, uint8_t mask) {
+void Triangula_NeoPixel::setPylon(uint8_t pylonIndex, uint8_t saturation, uint8_t value, uint8_t hue_top, uint8_t hue_bottom, uint8_t mask) {
 };
+
+void Triangula_NeoPixel::setSolidColour(uint8_t hue, uint8_t saturation, uint8_t value) {
+  uint32_t colour = this->hsvToColour(hue, saturation, value);
+  for (int i = 0; i < LED_COUNT; i++) {
+    this->setPixelColor(i, colour);
+  }
+};
+

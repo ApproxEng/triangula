@@ -15,6 +15,7 @@ class Triangula_NeoPixel : public Adafruit_NeoPixel {
     uint32_t hsvToColour(uint8_t h, uint8_t s, uint8_t v);
     void setCameraRing(uint8_t intensity);
     void setPylon(uint8_t pylonIndex, uint8_t saturation, uint8_t value, uint8_t hue_top, uint8_t hue_bottom, uint8_t mask);
+    void setSolidColour(uint8_t hue, uint8_t saturation, uint8_t value);
   private:
     uint8_t Red(uint32_t colour);
     uint8_t Green(uint32_t colour);
