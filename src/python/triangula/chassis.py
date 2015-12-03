@@ -72,7 +72,7 @@ def get_regular_triangular_chassis(wheel_distance, wheel_radius, max_rotations_p
         An appropriately configured HoloChassis
     """
     point = Point2(0, cos(radians(30)) * wheel_distance / 2.0)
-    vector = -Vector2(2 * pi * wheel_radius, 0)
+    vector = Vector2(-2 * pi * wheel_radius, 0)
 
     # Pink
     wheel_a = HoloChassis.OmniWheel(

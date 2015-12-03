@@ -82,6 +82,9 @@ while 1:
                     joystick.axes[0].corrected_value(),
                     joystick.axes[1].corrected_value()) * max_trn
 
+                lcd.set_text(row1='x={}'.format(str(joystick.axes[0].corrected_value())),
+                             row2='y={}'.format(str(joystick.axes[1].corrected_value())))
+
                 # If we're in absolute mode, rotate the translation vector appropriately
                 if state['bearing_zero'] is not None:
                     translate = triangula.chassis.rotate_vector(translate,
