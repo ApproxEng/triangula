@@ -9,6 +9,7 @@ import triangula.imu
 import triangula.input
 import triangula.lcd
 import triangula.util
+from euclid import Vector2, Point2
 
 # Construct a HoloChassis object to perform drive calculations, using the convenience
 # method to build one with regular triangular geometry and identical wheels. The exact
@@ -39,10 +40,75 @@ state = {'bearing_zero': None,
 lcd = triangula.lcd.LCD()
 lcd.set_text(row1='Triangula', row2=triangula.util.get_ip_address())
 
+
+def set_absolute_motion(button=None):
+    """
+    Lock motion to be compass relative, zero point (forwards) is the current bearing
+    """
+    lcd.set_text(row1='Manual Control', row2='Absolute Motion')
+    lcd.set_backlight(0, 10, 0)
+    state['bearing_zero'] = state['last_bearing']
+
+
+def set_relative_motion(button=None):
+    """
+    Set motion to be relative to the robot's reference frame
+    """
+    lcd.set_text(row1='Manual Control', row2='Relative Motion')
+    lcd.set_backlight(10, 0, 0)
+    state['bearing_zero'] = None
+
+
 while 1:
     try:
         with triangula.input.SixAxisResource(bind_defaults=True) as joystick:
             lcd.set_text(row1='Triangula', row2='Controller found')
-            arduino.set_lights(100,255,100)
+            arduino.set_lights(100, 255, 100)
+
+            # Bind motion mode buttons
+            joystick.register_button_handler(set_absolute_motion, triangula.input.SixAxis.BUTTON_SQUARE)
+            joystick.register_button_handler(set_relative_motion, triangula.input.SixAxis.BUTTON_TRIANGLE)
+            set_relative_motion()
+            while 1:
+                # Read the current fusion pose from the IMU, getting the bearing
+                bearing = triangula.imu.read()['fusionPose'][2]
+                if bearing is not None:
+                    state['last_bearing'] = bearing
+
+                # Get a vector from the left hand analogue stick and scale it up to our
+                # maximum translation speed, this will mean we go as fast directly forwards
+                # as possible when the stick is pushed fully forwards
+                translate = Vector2(
+                    joystick.axes[0].corrected_value(),
+                    joystick.axes[1].corrected_value()) * max_trn
+
+                # If we're in absolute mode, rotate the translation vector appropriately
+                if state['bearing_zero'] is not None:
+                    translate = triangula.chassis.rotate_vector(translate,
+                                                                state['last_bearing'] - state['bearing_zero'])
+
+                # Get the rotation in radians per second from the right hand stick's X axis,
+                # scaling it to our maximum rotational speed. When standing still this means
+                # that full right on the right hand stick corresponds to maximum speed
+                # clockwise rotation.
+                rotate = joystick.axes[2].corrected_value() * max_rot
+
+                # Given the translation vector and rotation, use the chassis object to calculate
+                # the speeds required in revolutions per second for each wheel. As we set the
+                # maximum wheel speeds to 1.0, all speeds will range from -1.0 to 1.0.
+                # This is a :class:`triangula.chassis.WheelSpeeds` containing the speeds and any
+                # scaling applied to bring the requested velocity within the range the chassis can
+                # actually perform.
+                wheel_speeds = chassis.get_wheel_speeds(
+                    translation=translate,
+                    rotation=rotate,
+                    origin=Point2(0, 0))
+                speeds = wheel_speeds.speeds
+
+                # Send desired motor speed values over the I2C bus to the Arduino, which will
+                # then send the appropriate messages to the Syren10 controllers over its serial
+                # line as well as lighting up a neopixel ring to provide additional feedback
+                # and bling.
+                arduino.set_motor_power(speeds[0], speeds[1], speeds[2])
     except IOError:
         lcd.set_text(row1='Waiting for ps3', row2='controller...')
