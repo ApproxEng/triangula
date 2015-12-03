@@ -163,7 +163,6 @@ class Arduino:
             Triple of encoder values for each wheel.
         """
         encoder_data = self._read(Arduino.DEVICE_ENCODERS_READ, 6)
-        print encoder_data
         return [encoder_data[0] * 256 + encoder_data[1],
                 encoder_data[2] * 256 + encoder_data[3],
                 encoder_data[4] * 256 + encoder_data[5]]
