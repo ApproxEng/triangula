@@ -1,5 +1,7 @@
 
-//#define ENABLE_MOTOR_FUNCTIONS
+// Comment this out to entirely disable the motor control functions. Handy when testing and you
+// really don't want the robot to vanish off into the distance mid-test.
+#define ENABLE_MOTOR_FUNCTIONS
 
 /*
    Simple sketch to directly control the Syren drivers. Send an I2C message containing 3 bytes, one
@@ -26,35 +28,12 @@
 // Maximum length of a command
 #define MAX_SENT_BYTES 4
 
-// Set frequency to poll encoder counts when calculating velocity. Higher values will cause faster
-// updates but at the cost of potentially lower accuracy
-const int velocityTimerHertz = 50;
-// The length of the buffer into which we record encoder values. Longer tracks allow for greater
-// precision at the cost of latency. The maximum latency, which will occur when speed drops to zero
-// is the length of the track divided by the velocity timer frequency. When running at higher speeds
-// the latency will be a single unit of the velocity timer frequency, the high levels of latency only
-// apply to cases where we have very low values.
-const byte trackLength = 16;
-// The delta in readings to search for. The algorithm walks back in time along the track until it finds
-// a delta between the current encoder value and the historic one of at least this magnitude. Higher
-// values will result in more accuracy at the cost of higher latency as we have to track back further in
-// time, more frequently, to obtain the result.
-const int targetDelta = 50;
-
 // Track absolute encoder values, these are unsigned ints and can (and will) roll over. The difference()
 // function handles these cases properly. Note that these are volatile as they're updated on pin change
 // interrupts, when reading them you should disable interrupts or risk reading half-way through an update.
 volatile unsigned int pos_a = 0;
 volatile unsigned int pos_b = 0;
 volatile unsigned int pos_c = 0;
-
-// Track encoder velocities, these are expressed as the number of encoder ticks (can be negative) per tick
-// of the velocity timer. A full rotation of the output shaft of our motors is around a thousand ticks, as
-// we have a 64 counts per revolution sensor and a reduction of 19:1, so the velocity in revolutions per
-// second is given by this value * velocityTimerHertz / (19 * 64)
-volatile double vel_a = 0.0d;
-volatile double vel_b = 0.0d;
-volatile double vel_c = 0.0d;
 
 byte registerMap[REG_MAP_SIZE];
 byte receivedCommands[MAX_SENT_BYTES];

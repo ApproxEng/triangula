@@ -125,24 +125,26 @@ class Arduino:
 
     def set_motor_power(self, a, b, c):
         """
-        Set motor power, writing values directly to the Syren controllers
+        Set motor power, writing values directly to the Syren controllers. Power values range from -1.0 to 1.0, where
+        positive values correspond to increasing encoder counts and clockwise rotation when viewed from the outside
+        of the robot looking inwards.
 
         :param float a:
-            Wheel a power, -1.0 to 1.0
+            Wheel a power, -1.0 to 1.0. Pink pylon.
         :param float b:
-            Wheel a power, -1.0 to 1.0
+            Wheel a power, -1.0 to 1.0. Yellow pylon.
         :param float c:
-            Wheel a power, -1.0 to 1.0
+            Wheel a power, -1.0 to 1.0. Green pylon.
         """
-        motor_values = [float_to_byte(a),
-                        float_to_byte(b),
-                        float_to_byte(c)]
+        motor_values = [float_to_byte(-a),
+                        float_to_byte(-b),
+                        float_to_byte(-c)]
 
         self._send(Arduino.DEVICE_MOTORS_SET, motor_values)
 
     def set_lights(self, hue, saturation, value):
         """
-        Set all the neopixel lights to a constant value
+        Set all the neopixel lights to a constant value.
 
         :param hue:
             0-255 hue
