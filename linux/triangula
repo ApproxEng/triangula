@@ -1,7 +1,7 @@
 #!/bin/sh
 
 ### BEGIN INIT INFO
-# Provides:          triangula_service
+# Provides:          triangula
 # Required-Start:    $remote_fs $syslog
 # Required-Stop:     $remote_fs $syslog
 # Default-Start:     2 3 4 5
@@ -26,7 +26,8 @@ DAEMON_USER=pi
 PIDFILE=/var/run/$DAEMON_NAME.pid
 
 . /lib/lsb/init-functions
-. /home/pi/env/bin/activate
+
+echo Hello
 
 do_start () {
     log_daemon_msg "Starting system $DAEMON_NAME daemon"
