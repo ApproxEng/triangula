@@ -62,7 +62,8 @@ class Arduino:
                 sleep(5)
                 # Call read_byte repeatedly to assemble our output data
                 return [self.bus.read_byte(ARDUINO_ADDRESS) for _ in xrange(bytes_to_read)]
-            except IOError:
+            except IOError as e:
+                print("Retrying", e)
                 sleep(5)
                 retries_left -= 1
         raise IOError("Retries exceeded when fetching data from arduino.")

@@ -160,9 +160,6 @@ void requestEvent() {
   if (encoderIndex < 6) {
     Wire.write(encoderData[encoderIndex++]);
   }
-  if (encoderIndex == 6) {
-    pixels.setSolidColour(200,255,50);
-  }
   else {
     Wire.write(0);
   }
