@@ -59,12 +59,12 @@ class Arduino:
                 # Prod the appropriate control register
                 self.bus.write_byte_data(ARDUINO_ADDRESS, register, 0)
                 # Delay for an arbitrary amount of time
-                sleep(5)
+                sleep(0)
                 # Call read_byte repeatedly to assemble our output data
                 return [self.bus.read_byte(ARDUINO_ADDRESS) for _ in xrange(bytes_to_read)]
             except IOError as e:
                 print("Retrying", e)
-                sleep(5)
+                sleep(.05)
                 retries_left -= 1
         raise IOError("Retries exceeded when fetching data from arduino.")
 
