@@ -1,5 +1,7 @@
 __author__ = 'tom'
 
+from time import sleep
+
 import smbus
 
 ARDUINO_ADDRESS = 0x70
@@ -47,16 +49,23 @@ class Arduino:
             except IOError:
                 retries -= 1
                 if retries == 0:
-                    raise IOError("Can't communicate with I2C bus")
+                    raise IOError("Retries exceeded sending data to arduino.")
                 pass
 
-    def _read(self, register, bytes):
-        success = False
-        while not success:
+    def _read(self, register, bytes_to_read):
+        retries_left = 4
+        while retries_left > 0:
             try:
-                return self.bus.read_i2c_block_data(ARDUINO_ADDRESS, register)[:bytes]
+                # Prod the appropriate control register
+                self.bus.write_byte_data(ARDUINO_ADDRESS, register, 0)
+                # Delay for an arbitrary amount of time
+                sleep(5)
+                # Call read_byte repeatedly to assemble our output data
+                return [self.bus.read_byte(ARDUINO_ADDRESS) for _ in xrange(bytes_to_read)]
             except IOError:
-                pass
+                sleep(5)
+                retries_left -= 1
+        raise IOError("Retries exceeded when fetching data from arduino.")
 
     def set_motor_power(self, a, b, c):
         """

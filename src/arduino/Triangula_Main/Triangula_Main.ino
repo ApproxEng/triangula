@@ -105,6 +105,10 @@ void setup() {
   pixels.show();
 }
 
+
+volatile int encoderData[6];
+volatile int encoderIndex = 6;
+
 void loop() {
   if (newDataAvailable) {
     newDataAvailable = false;
@@ -128,6 +132,13 @@ void loop() {
       case ENCODER_READ:
         pixels.setSolidColour(80, 255, 50);
         pixels.show();
+        encoderData[0] =  (pos_a & 0xff00) >> 8;
+        encoderData[1] =  pos_a & 0xff;
+        encoderData[2] =  (pos_b & 0xff00) >> 8;
+        encoderData[3] =  pos_b & 0xff;
+        encoderData[4] =  (pos_c & 0xff00) >> 8;
+        encoderData[5] =  pos_c & 0xff;
+        encoderIndex = 0;
         break;
       default:
 #ifdef ENABLE_MOTOR_FUNCTIONS
@@ -143,16 +154,18 @@ void loop() {
   }
 }
 
+
 // Called on I2C data request
 void requestEvent() {
-  byte data[] = {(byte)((pos_a & 0xff00) >> 8),
-                 (byte)(pos_a & 0xff),
-                 (byte)((pos_b & 0xff00) >> 8),
-                 (byte)(pos_b & 0xff),
-                 (byte)((pos_c & 0xff00) >> 8),
-                 (byte)(pos_c & 0xff)
-                };
-  Wire.write(data,6);
+  if (encoderIndex < 6) {
+    Wire.write(encoderData[encoderIndex++]);
+  }
+  if (encoderIndex == 6) {
+    pixels.setSolidColour(200,255,50);
+  }
+  else {
+    Wire.write(0);
+  }
 }
 
 // Called on I2C data reception
