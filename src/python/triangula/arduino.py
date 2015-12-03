@@ -9,6 +9,9 @@ DEVICE_MOTORS_SET = 0x20
 DEVICE_LIGHTS_SET = 0x21
 DEVICE_ENCODERS_READ = 0x22
 
+I2C_RETRIES = 4
+I2C_DELAY = 0.01
+
 
 def float_to_byte(f):
     i = int((f + 1.0) * 128.0)
@@ -36,35 +39,35 @@ class Arduino:
     elsewhere, and based on the code at http://dsscircuits.com/articles/arduino-i2c-slave-guide.
     """
 
-    def __init__(self):
+    def __init__(self, i2c_delay=I2C_DELAY, max_retries=I2C_RETRIES, bus_id=1):
         self.bus = smbus.SMBus(1)
+        self.i2c_delay = i2c_delay
+        self.max_retries = max_retries
 
     def _send(self, register, data):
-        success = False
-        retries = 4
-        while not success:
+        retries_left = self.max_retries
+        while retries_left > 0:
             try:
                 self.bus.write_i2c_block_data(ARDUINO_ADDRESS, register, data)
-                success = True
+                return
             except IOError:
-                retries -= 1
-                if retries == 0:
-                    raise IOError("Retries exceeded sending data to arduino.")
+                sleep(self.i2c_delay)
+                retries_left -= 1
                 pass
+        raise IOError("Retries exceeded sending data to arduino.")
 
     def _read(self, register, bytes_to_read):
-        retries_left = 4
+        retries_left = self.max_retries
         while retries_left > 0:
             try:
                 # Prod the appropriate control register
                 self.bus.write_byte_data(ARDUINO_ADDRESS, register, 0)
                 # Delay for an arbitrary amount of time
-                sleep(0)
+                sleep(self.i2c_delay)
                 # Call read_byte repeatedly to assemble our output data
                 return [self.bus.read_byte(ARDUINO_ADDRESS) for _ in xrange(bytes_to_read)]
-            except IOError as e:
-                print("Retrying", e)
-                sleep(.05)
+            except IOError:
+                sleep(self.i2c_delay)
                 retries_left -= 1
         raise IOError("Retries exceeded when fetching data from arduino.")
 
