@@ -152,24 +152,7 @@ void requestEvent() {
                  (byte)((pos_c & 0xff00) >> 8),
                  (byte)(pos_c & 0xff)
                 };
-  Serial.println("a");
-  Serial.println(data[0]);
-  Serial.println("b");
-
-  Serial.println(data[1]);
-  Serial.println("c");
-
-  Serial.println(data[2]);
-
-  Serial.println("d");
-  Serial.println(data[3]);
-  Serial.println("e");
-  Serial.println(data[4]);
-
-  Serial.println("f");
-  Serial.println(data[5]);
-  Serial.println(Wire.write(data, 6));
-
+  Wire.write(data,6);
 }
 
 // Called on I2C data reception

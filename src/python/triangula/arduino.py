@@ -5,6 +5,7 @@ import smbus
 ARDUINO_ADDRESS = 0x70
 DEVICE_MOTORS_SET = 0x20
 DEVICE_LIGHTS_SET = 0x21
+DEVICE_ENCODERS_READ = 0x22
 
 
 def float_to_byte(f):
@@ -89,7 +90,8 @@ class Arduino:
         Read data from the encoders, returning as a triple of what would be a uint16 if we had such things.
         :return: Triple of encoder values for each wheel.
         """
-        encoder_data = self._read(0, 6)
+        encoder_data = self._read(DEVICE_ENCODERS_READ, 6)
+        print encoder_data
         return [encoder_data[0] * 256 + encoder_data[1],
                 encoder_data[2] * 256 + encoder_data[3],
                 encoder_data[4] * 256 + encoder_data[5]]
