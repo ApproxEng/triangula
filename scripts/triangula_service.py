@@ -3,6 +3,7 @@
 Triangula top level service script
 """
 
+import signal
 from time import sleep
 
 import triangula.arduino
@@ -42,6 +43,15 @@ state = {'bearing_zero': None,
 lcd = triangula.lcd.LCD()
 lcd.cursor_off()
 lcd.set_text(row1='Triangula', row2=triangula.util.get_ip_address())
+
+
+def shutdown_handler(signum, frame):
+    arduino.set_motor_power(0, 0, 0)
+    arduino.set_lights(200, 255, 40)
+    lcd.set_text(row1='Service shutdown', row2='complete.')
+
+
+signal.signal(signal.SIGINT, shutdown_handler)
 
 
 def set_absolute_motion(button=None):
