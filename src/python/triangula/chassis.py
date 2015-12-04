@@ -170,7 +170,8 @@ class HoloChassis:
     def calculate_motion(self, speeds):
         """
         Invert the motion to speed calculation to obtain the actual linear and angular velocity of the chassis given
-        a vector of wheel speeds.
+        a vector of wheel speeds. See http://docs.scipy.org/doc/numpy-1.10.1/reference/generated/numpy.linalg.solve.html
+
         :param speeds:
             An array of wheel speeds, expressed as floats with units of radians per second, positive being towards
             the wheel vector.
