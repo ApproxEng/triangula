@@ -54,7 +54,7 @@ arduino = triangula.arduino.Arduino()
 
 while 1:
     try:
-        with triangula.input.SixAxisResource(bind_defaults=True) as joystick:
+        with triangula.input.SixAxisResource(bind_defaults=False) as joystick:
             lcd.set_text(row1='Triangula', row2='Controller found')
             task_manager = triangula.task.TaskManager(arduino=arduino, lcd=lcd, joystick=joystick, chassis=chassis)
             task_manager.run(initial_task=triangula.task.MenuTask())

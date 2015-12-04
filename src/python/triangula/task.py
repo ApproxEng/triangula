@@ -41,12 +41,14 @@ class TaskManager:
         active_task = initial_task
         task_initialised = False
         tick = 0
+
         while 1:
             try:
                 context = self._build_context(active_task.requires_compass)
-                if context.button_pressed(SixAxis.BUTTON_SELECT):
+                if context.button_pressed(SixAxis.BUTTON_CIRCLE):
                     active_task = MenuTask()
                     task_initialised = False
+                    tick = 0
                 if task_initialised:
                     new_task = active_task.poll_task(context=context, tick=tick)
                     if new_task is None:
@@ -206,8 +208,8 @@ class NetworkInfoTask(Task):
         context.lcd.set_backlight(10, 10, 10)
 
     def poll_task(self, context, tick):
-        context.lcd.set_text(row1='eth0 : {}'.format(get_ip_address(ifname='eth0')),
-                             row2='wlan0: {}'.format(get_ip_address(ifname='wlan0')))
+        context.lcd.set_text(row1='eth  {}'.format(get_ip_address(ifname='eth0')),
+                             row2='wlan {}'.format(get_ip_address(ifname='wlan0')))
         time.sleep(0.1)
 
 
