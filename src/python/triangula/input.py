@@ -322,7 +322,7 @@ class SixAxis:
                     button = SixAxis.BUTTON_L2
                 else:
                     button = None
-                if button:
+                if button is not None:
                     self.buttons_pressed |= 1 << button
                     for button_handler in self.button_handlers:
                         if button_handler['mask'] & (1 << button) != 0:
