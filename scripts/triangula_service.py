@@ -3,6 +3,8 @@
 Triangula top level service script
 """
 
+from time import sleep
+
 import triangula.arduino
 import triangula.chassis
 import triangula.imu
@@ -38,6 +40,7 @@ state = {'bearing_zero': None,
 
 # Start up the display, show the IP address
 lcd = triangula.lcd.LCD()
+lcd.cursor_off()
 lcd.set_text(row1='Triangula', row2=triangula.util.get_ip_address())
 
 
@@ -45,8 +48,10 @@ def set_absolute_motion(button=None):
     """
     Lock motion to be compass relative, zero point (forwards) is the current bearing
     """
-    lcd.set_text(row1='Manual Control', row2='Absolute Motion')
     lcd.set_backlight(0, 10, 0)
+    sleep(0.05)
+    lcd.set_text(row1='Manual Control', row2='Absolute Motion')
+    sleep(0.05)
     state['bearing_zero'] = state['last_bearing']
 
 
@@ -54,21 +59,38 @@ def set_relative_motion(button=None):
     """
     Set motion to be relative to the robot's reference frame
     """
-    lcd.set_text(row1='Manual Control', row2='Relative Motion')
     lcd.set_backlight(10, 0, 0)
+    sleep(0.05)
+    lcd.set_text(row1='Manual Control', row2='Relative Motion')
+    sleep(0.05)
     state['bearing_zero'] = None
+
+
+def show_encoder_values(button=None):
+    """
+    Show encoder values
+    """
+    lcd.set_backlight(red=8, green=4, blue=4)
+    sleep(0.05)
+    (a, b, c) = arduino.get_encoder_values()
+    lcd.set_text(row1='p={} y={}'.format(str(a).ljust(6), b), row2='g={} Enc.'.format(str(c).ljust(6)))
+    sleep(0.05)
 
 
 while 1:
     try:
         with triangula.input.SixAxisResource(bind_defaults=True) as joystick:
+
             lcd.set_text(row1='Triangula', row2='Controller found')
             arduino.set_lights(100, 255, 100)
 
             # Bind motion mode buttons
             joystick.register_button_handler(set_absolute_motion, triangula.input.SixAxis.BUTTON_SQUARE)
             joystick.register_button_handler(set_relative_motion, triangula.input.SixAxis.BUTTON_TRIANGLE)
+            joystick.register_button_hanndler(show_encoder_values, triangula.input.SixAxis.BUTTON_CIRCLE)
+
             set_relative_motion()
+
             while 1:
                 # Read the current fusion pose from the IMU, getting the bearing
                 bearing = triangula.imu.read()['fusionPose'][2]
@@ -81,9 +103,6 @@ while 1:
                 translate = Vector2(
                     joystick.axes[0].corrected_value(),
                     joystick.axes[1].corrected_value()) * max_trn
-
-                lcd.set_text(row1='x={}'.format(str(joystick.axes[0].corrected_value())),
-                             row2='y={}'.format(str(joystick.axes[1].corrected_value())))
 
                 # If we're in absolute mode, rotate the translation vector appropriately
                 if state['bearing_zero'] is not None:
