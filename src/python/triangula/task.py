@@ -1,8 +1,8 @@
 import time
-from abc import ABCMeta, abstractmethod
 
 import triangula.chassis
 import triangula.imu
+from abc import ABCMeta, abstractmethod
 from euclid import Vector2, Point2
 from triangula.input import SixAxis
 from triangula.util import get_ip_address
@@ -45,7 +45,7 @@ class TaskManager:
         while 1:
             try:
                 context = self._build_context(active_task.requires_compass)
-                if context.button_pressed(SixAxis.BUTTON_CIRCLE):
+                if context.button_pressed(SixAxis.BUTTON_SELECT):
                     active_task = MenuTask()
                     task_initialised = False
                     tick = 0
@@ -203,13 +203,26 @@ class NetworkInfoTask(Task):
 
     def __init__(self):
         super(NetworkInfoTask, self).__init__(task_name='Network info', requires_compass=False)
+        self.interfaces = ['eth0', 'wlan0']
+        self.selected_interface = 0
 
     def init_task(self, context):
         context.lcd.set_backlight(10, 10, 10)
 
+    def _increment_interface(self, delta):
+        self.selected_interface += delta
+        self.selected_interface %= len(self.interfaces)
+
     def poll_task(self, context, tick):
-        context.lcd.set_text(row1='eth  {}'.format(get_ip_address(ifname='eth0')),
-                             row2='wlan {}'.format(get_ip_address(ifname='wlan0')))
+        if context.button_pressed(SixAxis.BUTTON_D_LEFT):
+            self._increment_interface(-1)
+        elif context.button_pressed(SixAxis.BUTTON_D_RIGHT):
+            self._increment_interface(1)
+        context.lcd.set_text(
+            row1='{}: {} of {}'.format(self.interfaces[self.selected_interface],
+                                       self.selected_interface + 1,
+                                       len(self.interfaces)),
+            row2=get_ip_address(ifname=self.interfaces[self.selected_interface]))
         time.sleep(0.1)
 
 
