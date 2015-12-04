@@ -12,6 +12,7 @@ import time
 SETTINGS_FILE = 'RTIMULib'
 
 s = RTIMU.Settings(SETTINGS_FILE)
+print s
 _imu = RTIMU.RTIMU(s)
 if not _imu.IMUInit():
     raise ImportError('Unable to initialise IMU')

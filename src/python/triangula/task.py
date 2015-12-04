@@ -1,3 +1,4 @@
+import math
 import time
 
 import triangula.chassis
@@ -295,7 +296,7 @@ class CompassTestTask(Task):
         pass
 
     def poll_task(self, context, tick):
-        context.lcd.set_text(row1='Compass test', row2=str(context.bearing))
+        context.lcd.set_text(row1='Compass test', row2=str(math.degrees(context.bearing)))
         time.sleep(0.1)
 
 
