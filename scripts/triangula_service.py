@@ -57,6 +57,6 @@ while 1:
         with triangula.input.SixAxisResource(bind_defaults=True) as joystick:
             lcd.set_text(row1='Triangula', row2='Controller found')
             task_manager = triangula.task.TaskManager(arduino=arduino, lcd=lcd, joystick=joystick, chassis=chassis)
-            task_manager.run(initial_task=triangula.task.ManualMotionTask())
+            task_manager.run(initial_task=triangula.task.MenuTask())
     except IOError:
         lcd.set_text(row1='Waiting for PS3', row2='controller...')

@@ -1,8 +1,8 @@
 import time
+from abc import ABCMeta, abstractmethod
 
 import triangula.chassis
 import triangula.imu
-from abc import ABCMeta, abstractmethod
 from euclid import Vector2, Point2
 from triangula.input import SixAxis
 from triangula.util import get_ip_address
@@ -18,7 +18,6 @@ class TaskManager:
         self.lcd = lcd
         self.chassis = chassis
         self.joystick = joystick
-	print 'Created task manager'
 
     def _build_context(self, include_bearing):
         bearing = None
@@ -97,6 +96,17 @@ class TaskContext:
         self.joystick = joystick
         self.buttons_pressed = buttons_pressed
         self.timestamp = time.time()
+
+    def button_pressed(self, button_code):
+        """
+        Helper method, equivalent to 'self.buttons_pressed & 1 << button_code
+
+        :param button_code:
+            A button index from :class:`triangula.input.SixAxis` i.e. SixAxis.BUTTON_SQUARE
+        :return:
+            0 if the button wasn't pressed at the time the context was created, non-zero otherwise
+        """
+        return self.buttons_pressed & 1 << button_code
 
 
 class Task:
@@ -187,7 +197,7 @@ class NetworkInfoTask(Task):
     """
 
     def __init__(self):
-        super(NetworkInfoTask, self).__init__(task_name='Network info task', requires_compass=False)
+        super(NetworkInfoTask, self).__init__(task_name='Network info', requires_compass=False)
 
     def init_task(self, context):
         context.lcd.set_backlight(10, 10, 10)
@@ -210,16 +220,48 @@ class ErrorTask(Task):
         :param exception:
             An exception which caused this display to be shown
         """
-        super(ErrorTask, self).__init__(task_name='Error task', requires_compass=False)
-	self.exception = exception
-	print exception
+        super(ErrorTask, self).__init__(task_name='Error', requires_compass=False)
+        self.exception = exception
+        print exception
 
     def init_task(self, context):
         context.lcd.set_backlight(red=10, green=0, blue=0)
 
     def poll_task(self, context, tick):
-        context.lcd.set_text(row1='ERROR!', row2=((' '*16)+str(self.exception)+(' '*16))[tick%(len(str(self.exception))+16):])
+        context.lcd.set_text(row1='ERROR!', row2=((' ' * 16) + str(self.exception) + (' ' * 16))[
+                                                 tick % (len(str(self.exception)) + 16):])
         time.sleep(0.2)
+
+
+class MenuTask(Task):
+    """
+    Top level menu class
+    """
+
+    def __init__(self):
+        super(MenuTask, self).__init__(task_name='Menu', requires_compass=False)
+        self.tasks = [ManualMotionTask(), NetworkInfoTask()]
+        self.selected_task_index = 0
+
+    def init_task(self, context):
+        time.sleep(0.05)
+        context.lcd.set_backlight(10, 10, 10)
+        time.sleep(0.05)
+
+    def _increment_index(self, delta):
+        self.selected_task_index += delta
+        self.selected_task_index %= len(self.tasks)
+
+    def poll_task(self, context, tick):
+        if context.button_pressed(SixAxis.BUTTON_D_LEFT):
+            self._increment_index(-1)
+        elif context.button_pressed(SixAxis.BUTTON_D_RIGHT):
+            self._increment_index(1)
+        elif context.button_pressed(SixAxis.BUTTON_CROSS):
+            return ClearStateTask(following_task=self.tasks[self.selected_task_index])
+        context.lcd.set_text(row1='Task {} of {}'.format(self.selected_task_index + 1, len(self.tasks)),
+                             row2=self.tasks[self.selected_task_index].task_name)
+        time.sleep(0.1)
 
 
 class ManualMotionTask(Task):
@@ -228,7 +270,7 @@ class ManualMotionTask(Task):
     """
 
     def __init__(self):
-        super(ManualMotionTask, self).__init__(task_name='Manual motion task', requires_compass=True)
+        super(ManualMotionTask, self).__init__(task_name='Manual motion', requires_compass=True)
         self.bearing_zero = None
         self.last_bearing = 0
         self.max_trn = 0
@@ -238,7 +280,7 @@ class ManualMotionTask(Task):
         """
         Lock motion to be compass relative, zero point (forwards) is the current bearing
         """
-	time.sleep(0.05)
+        time.sleep(0.05)
         context.lcd.set_backlight(0, 10, 0)
         time.sleep(0.05)
         context.lcd.set_text(row1='Manual Control', row2='Absolute Motion')
@@ -249,7 +291,7 @@ class ManualMotionTask(Task):
         """
         Set motion to be relative to the robot's reference frame
         """
-	time.sleep(0.05)
+        time.sleep(0.05)
         context.lcd.set_backlight(10, 0, 0)
         time.sleep(0.05)
         context.lcd.set_text(row1='Manual Control', row2='Relative Motion')
@@ -267,9 +309,9 @@ class ManualMotionTask(Task):
         if context.bearing is not None:
             self.last_bearing = context.bearing
 
-        if context.buttons_pressed & 1<<SixAxis.BUTTON_TRIANGLE:
+        if context.button_pressed(SixAxis.BUTTON_TRIANGLE):
             self._set_relative_motion(context)
-        elif context.buttons_pressed & 1<<SixAxis.BUTTON_SQUARE:
+        elif context.button_pressed(SixAxis.BUTTON_SQUARE):
             self._set_absolute_motion(context)
 
         # Get a vector from the left hand analogue stick and scale it up to our
@@ -306,5 +348,5 @@ class ManualMotionTask(Task):
         # then send the appropriate messages to the Syren10 controllers over its serial
         # line as well as lighting up a neopixel ring to provide additional feedback
         # and bling.
-	power = [speeds[i] / context.chassis.wheels[i].max_speed for i in range(0, 3)]
-	context.arduino.set_motor_power(power[0], power[1], power[2])
+        power = [speeds[i] / context.chassis.wheels[i].max_speed for i in range(0, 3)]
+        context.arduino.set_motor_power(power[0], power[1], power[2])
