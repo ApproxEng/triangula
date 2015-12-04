@@ -97,7 +97,7 @@ while 1:
             # Bind motion mode buttons
             joystick.register_button_handler(set_absolute_motion, triangula.input.SixAxis.BUTTON_SQUARE)
             joystick.register_button_handler(set_relative_motion, triangula.input.SixAxis.BUTTON_TRIANGLE)
-            joystick.register_button_hanndler(show_encoder_values, triangula.input.SixAxis.BUTTON_CIRCLE)
+            joystick.register_button_handler(show_encoder_values, triangula.input.SixAxis.BUTTON_CIRCLE)
 
             set_relative_motion()
 
