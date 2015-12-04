@@ -114,6 +114,7 @@ class SixAxis:
                      SixAxis.Axis('right_x', dead_zone=dead_zone, hot_zone=hot_zone),
                      SixAxis.Axis('right_y', dead_zone=dead_zone, hot_zone=hot_zone, invert=True)]
         self.button_handlers = []
+        self.buttons_pressed = 0
         if connect:
             self.connect()
 
@@ -128,6 +129,18 @@ class SixAxis:
             return True
         else:
             return False
+
+    def get_and_clear_button_press_history(self):
+        """
+        Return the button press bitfield, clearing it as we do.
+
+        :return:
+            A bit-field where bits are set to 1 if the corresponding button has been pressed since the last call to
+            this method. Test with e.g. 'if button_press_field & SixAxis.BUTTON_CIRCLE:...'
+        """
+        old_buttons = self.buttons_pressed
+        self.buttons_pressed = 0
+        return old_buttons
 
     def connect(self):
         """
@@ -310,6 +323,7 @@ class SixAxis:
                 else:
                     button = None
                 if button:
+                    self.buttons_pressed |= 1 << button
                     for button_handler in self.button_handlers:
                         if button_handler['mask'] & (1 << button) != 0:
                             button_handler['handler'](button)
