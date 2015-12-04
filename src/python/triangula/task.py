@@ -265,6 +265,7 @@ class MenuTask(Task):
         time.sleep(0.05)
         context.lcd.set_backlight(10, 10, 10)
         time.sleep(0.05)
+        context.arduino.set_lights(170, 255, 60)
 
     def _increment_index(self, delta):
         self.selected_task_index += delta
