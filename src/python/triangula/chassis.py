@@ -1,6 +1,8 @@
 from math import cos, sin, pi, radians
 
 from euclid import Vector2, Point2
+from numpy import array as np_array
+from numpy.linalg import solve as np_solve
 
 __author__ = 'tom'
 
@@ -118,6 +120,33 @@ class WheelSpeeds:
         self.speeds = speeds
         self.scaling = scaling
 
+    def __str__(self):
+        return 'WheelSpeeds[ speeds={}, scaling={} ]'.format(self.speeds, self.scaling)
+
+
+class Motion:
+    """
+    A container to hold the translation and rotation vector
+    """
+
+    def __init__(self, x, y, rotation):
+        """
+        Constructor
+
+        :param x:
+            Translation vector x component in mm per second
+        :param y:
+            Translation vector y component in mm per second
+        :param rotation:
+            Rotation in radians per second
+        """
+        self.x = x
+        self.y = y
+        self.rotation = rotation
+
+    def __str__(self):
+        return 'Motion[ x={}, y={}, theta={} ]'.format(self.x, self.y, self.rotation)
+
 
 class HoloChassis:
     """
@@ -136,6 +165,22 @@ class HoloChassis:
             A sequence of :class:`triangula.chassis.HoloChassis.OmniWheel` objects defining the wheels for this chassis.
         """
         self.wheels = wheels
+        self._matrix_coefficients = np_array([[wheel.co_x, wheel.co_y, wheel.co_theta] for wheel in self.wheels])
+
+    def calculate_motion(self, speeds):
+        """
+        Invert the motion to speed calculation to obtain the actual linear and angular velocity of the chassis given
+        a vector of wheel speeds.
+        :param speeds:
+            An array of wheel speeds, expressed as floats with units of radians per second, positive being towards
+            the wheel vector.
+        :return:
+            A :class:`triangula.chassis.Motion` object containing the calculated translation and rotation
+        """
+        motion_array = np_solve(self._matrix_coefficients, np_array(speeds))
+        return Motion(x=float(motion_array[0]),
+                      y=float(motion_array[1]),
+                      rotation=float(motion_array[2]))
 
     def get_max_translation_speed(self):
         """
@@ -160,6 +205,9 @@ class HoloChassis:
         unrealistic_speed = 2 * pi * 100
         scaling = self.get_wheel_speeds(translation=Vector2(0, 0), rotation=unrealistic_speed).scaling
         return unrealistic_speed * scaling
+
+    def get_wheel_speeds_from_motion(self, motion):
+        return self.get_wheel_speeds(translation=Vector2(motion.x, motion.y), rotation=motion.rotation)
 
     def get_wheel_speeds(self, translation, rotation, origin=Point2(x=0, y=0)):
         """
@@ -195,7 +243,7 @@ class HoloChassis:
                 A :class:`euclid.Vector2` representing the velocity at the specified point in mm/s
             """
             d = point - origin
-            return d.normalized().cross() * abs(d) * rotation + translation
+            return d.cross() * rotation + translation
 
         wheel_speeds = list(wheel.speed(velocity_at(wheel.position)) for wheel in self.wheels)
         scale = 1.0
@@ -259,6 +307,10 @@ class HoloChassis:
             else:
                 raise ValueError('Must specify exactly one of angle and radius or translation vector')
             self.vector_magnitude_squared = self.vector.magnitude_squared()
+            self.co_x = self.vector.x / self.vector_magnitude_squared
+            self.co_y = self.vector.y / self.vector_magnitude_squared
+            self.co_theta = (self.vector.x * self.position.y -
+                             self.vector.y * self.position.x) / self.vector_magnitude_squared
 
         def speed(self, velocity):
             """

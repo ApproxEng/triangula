@@ -17,7 +17,7 @@ setup(
     author_email='tomoinn@gmail.com',
     license='ASL2.0',
     packages=['triangula'],
-    install_requires=['evdev==0.5.0', 'euclid==0.1', 'pyserial==2.7'],
+    install_requires=['evdev==0.5.0', 'euclid==0.1', 'pyserial==2.7', 'numpy=1.10.1'],
     include_package_data=True,
     test_suite='nose.collector',
     tests_require=['nose'],
