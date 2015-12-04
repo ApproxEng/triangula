@@ -83,11 +83,18 @@ class Arduino:
         self._max_retries = max_retries
         self._address = arduino_address
 
+    def _compute_checksum(self, register, data):
+        xor = 0
+        for data_byte in data:
+            xor ^= ord(data_byte)
+        return xor
+
     def _send(self, register, data):
         retries_left = self._max_retries
         while retries_left > 0:
             try:
-                self._bus.write_i2c_block_data(self._address, register, data)
+                data_with_checksum = data.append(self._compute_checksum(register, data))
+                self._bus.write_i2c_block_data(self._address, register, data_with_checksum)
                 return
             except IOError:
                 sleep(self._i2c_delay)
@@ -113,7 +120,7 @@ class Arduino:
         while retries_left > 0:
             try:
                 # Prod the appropriate control register
-                self._bus.write_byte_data(self._address, register, 0)
+                self._send(register, [0])
                 # Delay for an arbitrary amount of time
                 sleep(self._i2c_delay)
                 # Call read_byte repeatedly to assemble our output data

@@ -95,18 +95,22 @@ void loop() {
     switch (i2c_command) {
       case MOTOR_SPEED_SET:
 #ifdef ENABLE_MOTOR_FUNCTIONS
-        for (int i = 1; i < MAX_SENT_BYTES; i++) {
-          registerMap[i - 1] = receivedCommands[i];
+        if (checkCommand(3)) {
+          for (int i = 1; i < MAX_SENT_BYTES; i++) {
+            registerMap[i - 1] = receivedCommands[i];
+          }
+          for (int i = 0; i < 3; i++) {
+            ST[i].motor(((int)(receivedCommands[i + 1])) - 128);
+          }
+          setColours(registerMap, REG_MAP_SIZE, 8, 0);
         }
-        for (int i = 0; i < 3; i++) {
-          ST[i].motor(((int)(receivedCommands[i + 1])) - 128);
-        }
-        setColours(registerMap, REG_MAP_SIZE, 8, 0);
 #endif
         break;
       case SET_SOLID_COLOUR:
-        pixels.setSolidColour(receivedCommands[1], receivedCommands[2], receivedCommands[3]);
-        pixels.show();
+        if (checkCommand(3)) {
+          pixels.setSolidColour(receivedCommands[1], receivedCommands[2], receivedCommands[3]);
+          pixels.show();
+        }
         break;
       case ENCODER_READ:
         encoderData[0] =  (pos_c & 0xff00) >> 8;
@@ -142,15 +146,19 @@ void requestEvent() {
   }
 }
 
+// Validate a command with x bytes, implying a checksum byte at recievedCommands[x]
 boolean checkCommand(uint8_t command_length) {
-    return true;
+  uint8_t checksum = 0;
+  for (int a = 0; a < command_length; a++) {
+    checksum ^= receivedCommands[a];
+  }
+  return checksum == receivedCommands[command_length];
 }
 
 // Called on I2C data reception
 void receiveEvent(int bytesReceived) {
   for (int a = 0; a < bytesReceived; a++) {
     if (a < MAX_SENT_BYTES) {
-      bytes_in_buffer++;
       receivedCommands[a] = Wire.read();
     }
     else {
