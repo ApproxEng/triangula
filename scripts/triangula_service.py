@@ -4,6 +4,7 @@ Triangula top level service script
 """
 
 import signal
+import sys
 from time import sleep
 
 import triangula.arduino
@@ -49,6 +50,7 @@ def shutdown_handler(signum, frame):
     arduino.set_motor_power(0, 0, 0)
     arduino.set_lights(200, 255, 40)
     lcd.set_text(row1='Service shutdown', row2='complete.')
+    sys.exit(0)
 
 
 signal.signal(signal.SIGINT, shutdown_handler)
