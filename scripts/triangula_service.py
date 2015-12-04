@@ -46,22 +46,28 @@ lcd.cursor_off()
 lcd.set_text(row1='Triangula', row2=triangula.util.get_ip_address())
 
 
-def signal_handler_sigint(signum, frame):
-    arduino.set_motor_power(0, 0, 0)
-    arduino.set_lights(200, 255, 40)
-    lcd.set_text(row1='Service shutdown', row2='SIGINT received')
-    sys.exit(0)
+def get_shutdown_handler(message=None):
+    """
+    Build a shutdown handler, called from the signal methods in response to e.g. SIGTERM
+
+    :param message:
+        The message to show on the second line of the LCD, if any. Defaults to None
+    """
+
+    def handler(signum, frame):
+        arduino.set_motor_power(0, 0, 0)
+        arduino.set_lights(0, 0, 40)
+        lcd.set_backlight(red=5, green=5, blue=5)
+        sleep(0.05)
+        lcd.set_text(row1='Service shutdown', row2=message)
+        sleep(0.05)
+        sys.exit(0)
+
+    return handler
 
 
-def signal_handler_sigterm(signum, frame):
-    arduino.set_motor_power(0, 0, 0)
-    arduino.set_lights(200, 255, 40)
-    lcd.set_text(row1='Service shutdown', row2='SIGTERM received')
-    sys.exit(0)
-
-
-signal.signal(signal.SIGINT, signal_handler_sigint)
-signal.signal(signal.SIGTERM, signal_handler_sigterm)
+signal.signal(signal.SIGINT, get_shutdown_handler('SIGINT received'))
+signal.signal(signal.SIGTERM, get_shutdown_handler('SIGTERM received'))
 
 
 def set_absolute_motion(button=None):
