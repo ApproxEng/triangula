@@ -94,6 +94,7 @@ class Arduino:
         while retries_left > 0:
             try:
                 data_with_checksum = data.append(self._compute_checksum(register, data))
+                print data_with_checksum
                 self._bus.write_i2c_block_data(self._address, register, data_with_checksum)
                 return
             except IOError:
