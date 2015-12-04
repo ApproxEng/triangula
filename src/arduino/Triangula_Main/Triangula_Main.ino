@@ -146,13 +146,13 @@ void requestEvent() {
   }
 }
 
-// Validate a command with x bytes, implying a checksum byte at recievedCommands[x]
+// Validate a command with x bytes plus a register, implying a checksum byte at recievedCommands[x+1]
 boolean checkCommand(uint8_t command_length) {
   uint8_t checksum = 0;
-  for (int a = 0; a < command_length; a++) {
+  for (int a = 0; a <= command_length; a++) {
     checksum ^= receivedCommands[a];
   }
-  return checksum == receivedCommands[command_length];
+  return checksum == receivedCommands[command_length + 1];
 }
 
 // Called on I2C data reception
@@ -205,11 +205,11 @@ ISR (PCINT0_vect) {
   byte last_read = PINB;
   byte a = (last_read & 48) >> 4;
   byte b = (last_read & 12) >> 2;
-  // The wires are swapped over on encoder a (the pink pylon) so we need to swap things!
+  // The wires are swapped over on encoder c (the green pylon) so we need to swap things!
   byte c = last_read & 3;
-  pos_a -= encoderValues[a + (encoder_a << 2)];
+  pos_a += encoderValues[a + (encoder_a << 2)];
   pos_b += encoderValues[b + (encoder_b << 2)];
-  pos_c += encoderValues[c + (encoder_c << 2)];
+  pos_c -= encoderValues[c + (encoder_c << 2)];
   encoder_a = a;
   encoder_b = b;
   encoder_c = c;
