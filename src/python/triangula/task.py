@@ -258,7 +258,7 @@ class MenuTask(Task):
 
     def __init__(self):
         super(MenuTask, self).__init__(task_name='Menu', requires_compass=False)
-        self.tasks = [ManualMotionTask(), NetworkInfoTask()]
+        self.tasks = [ManualMotionTask(), NetworkInfoTask(), CompassTestTask()]
         self.selected_task_index = 0
 
     def init_task(self, context):
@@ -280,6 +280,22 @@ class MenuTask(Task):
             return ClearStateTask(following_task=self.tasks[self.selected_task_index])
         context.lcd.set_text(row1='Task {} of {}'.format(self.selected_task_index + 1, len(self.tasks)),
                              row2=self.tasks[self.selected_task_index].task_name)
+        time.sleep(0.1)
+
+
+class CompassTestTask(Task):
+    """
+    Display the current compass bearing
+    """
+
+    def __init__(self):
+        super(CompassTestTask, self).__init__(task_name='Compass test', requires_compass=True)
+
+    def init_task(self, context):
+        pass
+
+    def poll_task(self, context, tick):
+        context.lcd.set_text(row1='Compass test', row2=str(context.bearing))
         time.sleep(0.1)
 
 

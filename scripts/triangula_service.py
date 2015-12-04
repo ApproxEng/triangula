@@ -39,6 +39,7 @@ def get_shutdown_handler(message=None):
 signal.signal(signal.SIGINT, get_shutdown_handler('SIGINT received'))
 signal.signal(signal.SIGTERM, get_shutdown_handler('SIGTERM received'))
 
+
 # Start up the display
 lcd = triangula.lcd.LCD()
 
