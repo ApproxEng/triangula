@@ -46,7 +46,7 @@ class TaskManager:
             try:
                 context = self._build_context(active_task.requires_compass)
                 if context.button_pressed(SixAxis.BUTTON_SELECT):
-                    active_task = MenuTask()
+                    active_task = ClearStateTask(MenuTask())
                     task_initialised = False
                     tick = 0
                 if task_initialised:
