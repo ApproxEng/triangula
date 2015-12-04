@@ -18,6 +18,7 @@ class TaskManager:
         self.lcd = lcd
         self.chassis = chassis
         self.joystick = joystick
+	print 'Created task manager'
 
     def _build_context(self, include_bearing):
         bearing = None
@@ -28,7 +29,7 @@ class TaskManager:
                            bearing=bearing,
                            chassis=self.chassis,
                            joystick=self.joystick,
-                           buttons_pressed=self.joystick.get_and_clear_button_press_history)
+                           buttons_pressed=self.joystick.get_and_clear_button_press_history())
 
     def run(self, initial_task):
         """
@@ -171,7 +172,7 @@ class ClearStateTask(Task):
         self.following_task = following_task
 
     def init_task(self, context):
-        context.arduino.set_motor_speeds(0, 0, 0)
+        context.arduino.set_motor_power(0, 0, 0)
         context.lcd.set_text(row1='', row2='')
         context.lcd.set_backlight(0, 0, 0)
         context.arduino.set_lights(0, 0, 0)
@@ -210,13 +211,15 @@ class ErrorTask(Task):
             An exception which caused this display to be shown
         """
         super(ErrorTask, self).__init__(task_name='Error task', requires_compass=False)
+	self.exception = exception
+	print exception
 
     def init_task(self, context):
         context.lcd.set_backlight(red=10, green=0, blue=0)
 
     def poll_task(self, context, tick):
-        context.lcd.set_text(row1='ERROR!', row2=str(self.exception))
-        time.sleep(0.1)
+        context.lcd.set_text(row1='ERROR!', row2=((' '*16)+str(self.exception)+(' '*16))[tick%(len(str(self.exception))+16):])
+        time.sleep(0.2)
 
 
 class ManualMotionTask(Task):
@@ -235,6 +238,7 @@ class ManualMotionTask(Task):
         """
         Lock motion to be compass relative, zero point (forwards) is the current bearing
         """
+	time.sleep(0.05)
         context.lcd.set_backlight(0, 10, 0)
         time.sleep(0.05)
         context.lcd.set_text(row1='Manual Control', row2='Absolute Motion')
@@ -245,6 +249,7 @@ class ManualMotionTask(Task):
         """
         Set motion to be relative to the robot's reference frame
         """
+	time.sleep(0.05)
         context.lcd.set_backlight(10, 0, 0)
         time.sleep(0.05)
         context.lcd.set_text(row1='Manual Control', row2='Relative Motion')
@@ -262,13 +267,13 @@ class ManualMotionTask(Task):
         if context.bearing is not None:
             self.last_bearing = context.bearing
 
-        if context.buttons_pressed & SixAxis.BUTTON_TRIANGLE:
+        if context.buttons_pressed & 1<<SixAxis.BUTTON_TRIANGLE:
             self._set_relative_motion(context)
-        elif context.buttons_pressed & SixAxis.BUTTON_SQUARE:
+        elif context.buttons_pressed & 1<<SixAxis.BUTTON_SQUARE:
             self._set_absolute_motion(context)
 
         # Get a vector from the left hand analogue stick and scale it up to our
-        # maximum translation speed, this will mean we go as fast directly forwards
+        # maximum translation speed, this will mean we go as fast directly forward
         # as possible when the stick is pushed fully forwards
         translate = Vector2(
             context.joystick.axes[0].corrected_value(),
@@ -301,4 +306,5 @@ class ManualMotionTask(Task):
         # then send the appropriate messages to the Syren10 controllers over its serial
         # line as well as lighting up a neopixel ring to provide additional feedback
         # and bling.
-        context.arduino.set_motor_power([speeds[i] / context.chassis.wheels[i].max_speed for i in range(0, 2)])
+	power = [speeds[i] / context.chassis.wheels[i].max_speed for i in range(0, 3)]
+	context.arduino.set_motor_power(power[0], power[1], power[2])
