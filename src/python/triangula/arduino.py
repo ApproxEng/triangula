@@ -86,7 +86,7 @@ class Arduino:
     def _compute_checksum(self, register, data):
         xor = 0
         for data_byte in data:
-            xor ^= ord(data_byte)
+            xor ^= data_byte
         return xor
 
     def _send(self, register, data):
