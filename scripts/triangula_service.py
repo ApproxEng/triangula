@@ -46,14 +46,22 @@ lcd.cursor_off()
 lcd.set_text(row1='Triangula', row2=triangula.util.get_ip_address())
 
 
-def shutdown_handler(signum, frame):
+def signal_handler_sigint(signum, frame):
     arduino.set_motor_power(0, 0, 0)
     arduino.set_lights(200, 255, 40)
-    lcd.set_text(row1='Service shutdown', row2='complete.')
+    lcd.set_text(row1='Service shutdown', row2='SIGINT received')
     sys.exit(0)
 
 
-signal.signal(signal.SIGINT, shutdown_handler)
+def signal_handler_sigterm(signum, frame):
+    arduino.set_motor_power(0, 0, 0)
+    arduino.set_lights(200, 255, 40)
+    lcd.set_text(row1='Service shutdown', row2='SIGTERM received')
+    sys.exit(0)
+
+
+signal.signal(signal.SIGINT, signal_handler_sigint)
+signal.signal(signal.SIGTERM, signal_handler_sigterm)
 
 
 def set_absolute_motion(button=None):

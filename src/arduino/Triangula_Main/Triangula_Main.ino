@@ -26,7 +26,7 @@
 // Register map array size in bytes
 #define REG_MAP_SIZE   6
 // Maximum length of a command
-#define MAX_SENT_BYTES 4
+#define MAX_SENT_BYTES 5
 
 // Track absolute encoder values, these are unsigned ints and can (and will) roll over. The difference()
 // function handles these cases properly. Note that these are volatile as they're updated on pin change
@@ -142,10 +142,15 @@ void requestEvent() {
   }
 }
 
+boolean checkCommand(uint8_t command_length) {
+    return true;
+}
+
 // Called on I2C data reception
 void receiveEvent(int bytesReceived) {
   for (int a = 0; a < bytesReceived; a++) {
     if (a < MAX_SENT_BYTES) {
+      bytes_in_buffer++;
       receivedCommands[a] = Wire.read();
     }
     else {
