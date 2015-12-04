@@ -21,7 +21,7 @@ from euclid import Vector2, Point2
 # scale the output of the joystick such that we hit whatever this value is when at the
 # extreme ranges of the stick.
 chassis = triangula.chassis.get_regular_triangular_chassis(
-    wheel_distance=200,
+    wheel_distance=290,
     wheel_radius=60,
     max_rotations_per_second=1.0)
 
@@ -29,8 +29,6 @@ chassis = triangula.chassis.get_regular_triangular_chassis(
 max_trn = chassis.get_max_translation_speed()
 # Maximum rotation speed in radians/2
 max_rot = chassis.get_max_rotation_speed()
-# Show max speeds
-print (max_trn, max_rot)
 
 # Connect to the Arduino Nano over I2C, motors and lights are attached to the nano
 arduino = triangula.arduino.Arduino()
