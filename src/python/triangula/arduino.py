@@ -84,7 +84,7 @@ class Arduino:
         self._address = arduino_address
 
     def _compute_checksum(self, register, data):
-        xor = 0
+        xor = register
         for data_byte in data:
             xor ^= data_byte
         return xor
