@@ -41,7 +41,7 @@ volatile boolean newDataAvailable = false;
 
 #ifdef ENABLE_MOTOR_FUNCTIONS
 // Motor drivers, must be configured in packet serial mode with addresses 128, 129 and 130
-Sabertooth ST[3] = { Sabertooth(128), Sabertooth(129), Sabertooth(130) };
+Sabertooth ST[3] = { Sabertooth(130), Sabertooth(129), Sabertooth(128) };
 #endif
 
 // Lights
@@ -192,13 +192,13 @@ byte encoder_c;
 // Handle pin change interrupts
 ISR (PCINT0_vect) {
   byte last_read = PINB;
-  byte a = (last_read & 48) >> 4;
+  byte c = (last_read & 48) >> 4;
   byte b = (last_read & 12) >> 2;
-  // The wires are swapped over on encoder c (the pink pylon) so we need to swap things!
-  byte c = last_read & 3;
-  pos_a += encoderValues[a + (encoder_a << 2)];
+  // The wires are swapped over on encoder a (the pink pylon) so we need to swap things!
+  byte a = last_read & 3;
+  pos_a -= encoderValues[a + (encoder_a << 2)];
   pos_b += encoderValues[b + (encoder_b << 2)];
-  pos_c -= encoderValues[c + (encoder_c << 2)];
+  pos_c += encoderValues[c + (encoder_c << 2)];
   encoder_a = a;
   encoder_b = b;
   encoder_c = c;

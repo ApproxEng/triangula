@@ -21,7 +21,7 @@ def rotate_point(point, angle, origin=None):
     :param euclid.Point2 point:
         The point to rotate
     :param float angle:
-        Angle in radians
+        Angle in radians, anti-clockwise rotation
     :param euclid.Point2 origin:
         Origin of the rotation, defaults to (0,0) if not specified
     :return:
@@ -42,7 +42,7 @@ def rotate_vector(vector, angle, origin=None):
     :param euclid.Point2 point:
         The point to rotate
     :param float angle:
-        Angle in radians
+        Angle in radians, anti-clockwise rotation
     :param euclid.Point2 origin:
         Origin of the rotation, defaults to (0,0) if not specified
     :return:
@@ -81,13 +81,13 @@ def get_regular_triangular_chassis(wheel_distance, wheel_radius, max_rotations_p
         max_speed=max_rotations_per_second)
     # Yellow
     wheel_b = HoloChassis.OmniWheel(
-        position=rotate_point(point, pi * 2 / 3),
-        vector=rotate_vector(vector, pi * 2 / 3),
+        position=rotate_point(point, -pi * 2 / 3),
+        vector=rotate_vector(vector, -pi * 2 / 3),
         max_speed=max_rotations_per_second)
     # Green
     wheel_c = HoloChassis.OmniWheel(
-        position=rotate_point(point, pi * 4 / 3),
-        vector=rotate_vector(vector, pi * 4 / 3),
+        position=rotate_point(point, -pi * 4 / 3),
+        vector=rotate_vector(vector, -pi * 4 / 3),
         max_speed=max_rotations_per_second)
 
     return HoloChassis(wheels=[wheel_a, wheel_b, wheel_c])
