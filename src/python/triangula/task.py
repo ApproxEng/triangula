@@ -44,6 +44,9 @@ class TaskManager:
         while 1:
             try:
                 context = self._build_context(active_task.requires_compass)
+                if context.button_pressed(SixAxis.BUTTON_SELECT):
+                    active_task = MenuTask()
+                    task_initialised = False
                 if task_initialised:
                     new_task = active_task.poll_task(context=context, tick=tick)
                     if new_task is None:
