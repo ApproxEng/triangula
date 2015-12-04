@@ -109,8 +109,6 @@ void loop() {
         pixels.show();
         break;
       case ENCODER_READ:
-        pixels.setSolidColour(80, 255, 50);
-        pixels.show();
         encoderData[0] =  (pos_c & 0xff00) >> 8;
         encoderData[1] =  pos_c & 0xff;
         encoderData[2] =  (pos_b & 0xff00) >> 8;
@@ -192,10 +190,10 @@ byte encoder_c;
 // Handle pin change interrupts
 ISR (PCINT0_vect) {
   byte last_read = PINB;
-  byte c = (last_read & 48) >> 4;
+  byte a = (last_read & 48) >> 4;
   byte b = (last_read & 12) >> 2;
   // The wires are swapped over on encoder a (the pink pylon) so we need to swap things!
-  byte a = last_read & 3;
+  byte c = last_read & 3;
   pos_a -= encoderValues[a + (encoder_a << 2)];
   pos_b += encoderValues[b + (encoder_b << 2)];
   pos_c += encoderValues[c + (encoder_c << 2)];
