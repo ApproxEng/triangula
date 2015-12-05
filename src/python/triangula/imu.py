@@ -7,10 +7,8 @@ import sys
 
 sys.path.append('.')
 import RTIMU
-import time
 import os
 import threading
-from triangula.arduino import I2C_LOCK
 
 SETTINGS_FILE = 'RTIMULib'
 print("Using settings file " + SETTINGS_FILE + ".ini")
@@ -39,16 +37,31 @@ class IMUThread(threading.Thread):
     def __init__(self):
         super(IMUThread, self).__init__(name='IMU Thread')
         self.fusion_pose = None
+        self.data_request = False
         self.setDaemon(daemonic=True)
+        self.con = threading.Condition()
+
+    def get_data(self):
+        self.con.acquire()
+        self.data_request = True
+        self.fusion_pose = None
+        self.con.notify()
+        self.con.release()
+        while not self.fusion_pose:
+            pass
+        return self.fusion_pose
 
     def run(self):
         while True:
-            I2C_LOCK.acquire()
+            self.con.acquire()
+            while not self.data_request:
+                self.con.wait()
             if _imu.IMURead():
                 data = _imu.getIMUData()
                 self.fusion_pose = data["fusionPose"]
-                time.sleep(_poll_interval * 1.0 / 1000.0)
-            I2C_LOCK.release()
+                self.data_request = False
+                # time.sleep(_poll_interval * 1.0 / 1000.0)
+            self.con.release()
 
 
 thread = IMUThread()
@@ -60,4 +73,4 @@ def name():
 
 
 def read():
-    return thread.fusion_pose
+    return thread.get_data()
