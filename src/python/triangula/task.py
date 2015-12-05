@@ -25,7 +25,7 @@ class TaskManager:
         imu_data = None
         if include_bearing:
             imu_data = triangula.imu.read()
-            bearing = imu_data['fusionPose'][2]
+            bearing = imu_data[2]
         return TaskContext(arduino=self.arduino,
                            lcd=self.lcd,
                            bearing=bearing,
