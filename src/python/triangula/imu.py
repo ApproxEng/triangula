@@ -7,9 +7,9 @@ import sys
 
 sys.path.append('.')
 import RTIMU
+import time
 import os
 import threading
-import time
 
 SETTINGS_FILE = 'RTIMULib'
 print("Using settings file " + SETTINGS_FILE + ".ini")
@@ -38,31 +38,14 @@ class IMUThread(threading.Thread):
     def __init__(self):
         super(IMUThread, self).__init__(name='IMU Thread')
         self.fusion_pose = None
-        self.data_request = False
         self.setDaemon(daemonic=True)
-        self.con = threading.Condition()
-
-    def get_data(self):
-        self.con.acquire()
-        self.data_request = True
-        self.fusion_pose = None
-        self.con.notify()
-        self.con.release()
-        while not self.fusion_pose:
-            time.sleep(_poll_interval / 2000.0)
-        return self.fusion_pose
 
     def run(self):
         while True:
-            self.con.acquire()
-            while not self.data_request:
-                self.con.wait()
             if _imu.IMURead():
                 data = _imu.getIMUData()
                 self.fusion_pose = data["fusionPose"]
-                self.data_request = False
-                time.sleep(_poll_interval / 1000.0)
-            self.con.release()
+                time.sleep(_poll_interval * 1.0 / 1000.0)
 
 
 thread = IMUThread()
@@ -74,4 +57,4 @@ def name():
 
 
 def read():
-    return thread.get_data()
+    return thread.fusion_pose

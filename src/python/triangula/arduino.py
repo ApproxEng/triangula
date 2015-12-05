@@ -6,7 +6,7 @@ import smbus
 
 ARDUINO_ADDRESS = 0x70
 
-I2C_RETRIES = 4
+I2C_RETRIES = 30
 I2C_DELAY = 0.01
 
 
