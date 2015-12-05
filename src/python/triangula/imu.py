@@ -45,7 +45,7 @@ class IMUThread(threading.Thread):
             if _imu.IMURead():
                 data = _imu.getIMUData()
                 self.fusion_pose = data["fusionPose"]
-                time.sleep(_poll_interval * 1.0 / 1000.0)
+                time.sleep(_poll_interval * 2.0 / 1000.0)
 
 
 thread = IMUThread()
