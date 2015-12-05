@@ -1,5 +1,6 @@
 __author__ = 'tom'
 
+import threading
 from time import sleep
 
 import smbus
@@ -8,6 +9,8 @@ ARDUINO_ADDRESS = 0x70
 
 I2C_RETRIES = 4
 I2C_DELAY = 0.01
+
+I2C_LOCK = threading.RLock()
 
 
 def float_to_byte(f):
@@ -90,6 +93,7 @@ class Arduino:
         return xor
 
     def _send(self, register, data):
+        I2C_LOCK.acquire()
         retries_left = self._max_retries
         while retries_left > 0:
             try:
@@ -97,11 +101,13 @@ class Arduino:
                 data_with_checksum.extend(data)
                 data_with_checksum.append(self._compute_checksum(register, data))
                 self._bus.write_i2c_block_data(self._address, register, data_with_checksum)
+                I2C_LOCK.release()
                 return
             except IOError:
                 sleep(self._i2c_delay)
                 retries_left -= 1
                 pass
+        I2C_LOCK.release()
         raise IOError("Retries exceeded sending data to arduino.")
 
     def _read(self, register, bytes_to_read):
@@ -118,6 +124,7 @@ class Arduino:
         :return:
             A byte array, length equal to bytes_to_read, containing data read from the arduino.
         """
+        I2C_LOCK.acquire()
         retries_left = self._max_retries
         while retries_left > 0:
             try:
@@ -126,10 +133,13 @@ class Arduino:
                 # Delay for an arbitrary amount of time
                 sleep(self._i2c_delay)
                 # Call read_byte repeatedly to assemble our output data
-                return [self._bus.read_byte(self._address) for _ in xrange(bytes_to_read)]
+                data = [self._bus.read_byte(self._address) for _ in xrange(bytes_to_read)]
+                I2C_LOCK.release()
+                return data
             except IOError:
                 sleep(self._i2c_delay)
                 retries_left -= 1
+        I2C_LOCK.release()
         raise IOError("Retries exceeded when fetching data from arduino.")
 
     def set_motor_power(self, a, b, c):
