@@ -9,7 +9,7 @@ sys.path.append('.')
 import RTIMU
 import time
 import os
-import threading.Thread
+import threading
 
 SETTINGS_FILE = 'RTIMULib'
 print("Using settings file " + SETTINGS_FILE + ".ini")
