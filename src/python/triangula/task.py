@@ -22,11 +22,14 @@ class TaskManager:
 
     def _build_context(self, include_bearing):
         bearing = None
+        imu_data = None
         if include_bearing:
-            bearing = triangula.imu.read()['fusionPose'][2]
+            imu_data = triangula.imu.read()
+            bearing = imu_data['fusionPose'][2]
         return TaskContext(arduino=self.arduino,
                            lcd=self.lcd,
                            bearing=bearing,
+                           imu_data=imu_data,
                            chassis=self.chassis,
                            joystick=self.joystick,
                            buttons_pressed=self.joystick.get_and_clear_button_press_history())
@@ -76,7 +79,7 @@ class TaskContext:
 
     """
 
-    def __init__(self, arduino, lcd, bearing, chassis, joystick, buttons_pressed):
+    def __init__(self, arduino, lcd, bearing, imu_data, chassis, joystick, buttons_pressed):
         """
         Create a new task context
 
@@ -87,6 +90,8 @@ class TaskContext:
             Instance of :class:`triangula.lcd.LCD` that can be used to display messages.
         :param bearing:
             If the task has indicated that a bearing is required, this is float value from the compass on the IMU.
+        :param imu_data:
+            If the task has indicated that a bearing is required, contains the entire IMU data block.
         :param chassis:
             An instance of :class:`triangula.chassis.HoloChassis` defining the motion dynamics for the robot.
         :param joystick:
