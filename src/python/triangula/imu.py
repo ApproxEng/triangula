@@ -8,9 +8,12 @@ import sys
 sys.path.append('.')
 import RTIMU
 import time
+import os
 
 SETTINGS_FILE = 'RTIMULib'
-
+print("Using settings file " + SETTINGS_FILE + ".ini")
+if not os.path.exists(SETTINGS_FILE + ".ini"):
+    print("Settings file does not exist, will be created")
 s = RTIMU.Settings(SETTINGS_FILE)
 print s
 _imu = RTIMU.RTIMU(s)
@@ -23,7 +26,10 @@ _imu.setSlerpPower(0.02)
 _imu.setGyroEnable(True)
 _imu.setAccelEnable(True)
 _imu.setCompassEnable(True)
-poll_interval = _imu.IMUGetPollInterval()
+_poll_interval = _imu.IMUGetPollInterval()
+print("Recommended Poll Interval: %dmS\n" % _poll_interval)
+_last_read_time = None
+_last_read_value = None
 
 
 def name():
@@ -31,14 +37,22 @@ def name():
 
 
 def read():
-    d = False
+    global _last_read_value
+    global _last_read_time
+    time_now = time.time()
+    if _last_read_time is not None:
+        delta_millis = time_now - _last_read_time * 1000
+        if delta_millis <= _poll_interval:
+            return _last_read_value
+    _last_read_value = None
     attempts = 0
-    while not d and attempts < 3:
+    while not _last_read_value and attempts < 3:
         if _imu.IMURead():
             d = _imu.getIMUData()
             (d['pressureValid'], d['pressure'], d['temperatureValid'], d['temperature']) = _pressure.pressureRead()
+            _last_read_value = d
+            _last_read_time = time_now
         else:
             attempts += 1
-            time.sleep(poll_interval * 1.0 / 1000)
-    if d:
-        return d
+            time.sleep(_poll_interval * 1.0 / 1000)
+    return _last_read_value
