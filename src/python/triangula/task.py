@@ -4,7 +4,8 @@ from abc import ABCMeta, abstractmethod
 
 import triangula.chassis
 import triangula.imu
-from euclid import Vector2, Point2
+from euclid import Vector2
+from triangula.chassis import Motion
 from triangula.input import SixAxis
 from triangula.util import get_ip_address
 
@@ -381,10 +382,7 @@ class ManualMotionTask(Task):
         # This is a :class:`triangula.chassis.WheelSpeeds` containing the speeds and any
         # scaling applied to bring the requested velocity within the range the chassis can
         # actually perform.
-        wheel_speeds = context.chassis.get_wheel_speeds(
-            translation=translate,
-            rotation=rotate,
-            origin=Point2(0, 0))
+        wheel_speeds = context.chassis.get_wheel_speeds(motion=Motion(translation=translate, rotation=rotate))
         speeds = wheel_speeds.speeds
 
         # Send desired motor speed values over the I2C bus to the Arduino, which will

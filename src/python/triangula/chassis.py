@@ -12,8 +12,8 @@ def test():
         HoloChassis.OmniWheel(position=Point2(1, 0), angle=0, radius=60),
         HoloChassis.OmniWheel(position=Point2(-1, 0), angle=0, radius=60)]
     )
-    print chassis.get_wheel_speeds(translation=Vector2(0, 0), rotation=0.5)
-    print chassis.get_wheel_speeds(translation=Vector2(0, 0), rotation=0.5, origin=Point2(1, 0))
+    print chassis.get_wheel_speeds(Motion(translation=Vector2(0, 0), rotation=0.5))
+    print chassis.get_wheel_speeds(Motion(translation=Vector2(0, 0), rotation=0.5), origin=Point2(1, 0))
 
 
 def rotate_point(point, angle, origin=None):
@@ -308,7 +308,7 @@ class HoloChassis:
             Maximum speed in millimetres per second as a float
         """
         unrealistic_speed = 10000.0
-        scaling = self.get_wheel_speeds(translation=Vector2(0, unrealistic_speed), rotation=0).scaling
+        scaling = self.get_wheel_speeds(Motion(translation=Vector2(0, unrealistic_speed), rotation=0)).scaling
         return unrealistic_speed * scaling
 
     def get_max_rotation_speed(self):
@@ -320,21 +320,15 @@ class HoloChassis:
             Maximum radians per second as a float
         """
         unrealistic_speed = 2 * pi * 100
-        scaling = self.get_wheel_speeds(translation=Vector2(0, 0), rotation=unrealistic_speed).scaling
+        scaling = self.get_wheel_speeds(Motion(translation=Vector2(0, 0), rotation=unrealistic_speed)).scaling
         return unrealistic_speed * scaling
 
-    def get_wheel_speeds_from_motion(self, motion):
-        return self.get_wheel_speeds(translation=Vector2(motion.x, motion.y), rotation=motion.rotation)
-
-    def get_wheel_speeds(self, translation, rotation, origin=Point2(x=0, y=0)):
+    def get_wheel_speeds(self, motion, origin=Point2(x=0, y=0)):
         """
         Calculate speeds to drive each wheel in the chassis at to attain the specified rotation / translation 3-vector.
 
-        :param euclid.Vector2 translation:
-            Desired translation vector specified in millimetres per second.
-        :param float rotation:
-            Desired anguar velocity, specified in radians per second where positive values correspond to clockwise
-            rotation of the chassis when viewed from above.
+        :param triangula.chassis.Motion motion:
+            Desired motion of the robot chassis
         :param euclid.Point2 origin:
             Optional, can define the centre of rotation to be something other than 0,0. Units are in millimetres.
             Defaults to rotating around x=0, y=0.
@@ -360,7 +354,7 @@ class HoloChassis:
                 A :class:`euclid.Vector2` representing the velocity at the specified point in mm/s
             """
             d = point - origin
-            return d.cross() * rotation + translation
+            return d.cross() * motion.rotation + motion.translation
 
         wheel_speeds = list(wheel.speed(velocity_at(wheel.position)) for wheel in self.wheels)
         scale = 1.0
