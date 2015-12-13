@@ -3,17 +3,16 @@
 Triangula top level service script
 """
 
-import signal
-import sys
+from signal import signal, SIGINT, SIGTERM
+from sys import exit
 from time import sleep
 
-import triangula.arduino
-import triangula.chassis
-import triangula.imu
-import triangula.input
-import triangula.lcd
-import triangula.task
-import triangula.util
+from triangula.arduino import Arduino
+from triangula.chassis import get_regular_triangular_chassis
+from triangula.input import SixAxisResource
+from triangula.lcd import LCD
+from triangula.task import TaskManager
+from triangula.tasks.main_menu import MenuTask
 
 
 def get_shutdown_handler(message=None):
@@ -31,33 +30,32 @@ def get_shutdown_handler(message=None):
         sleep(0.05)
         lcd.set_text(row1='Service shutdown', row2=message)
         sleep(0.05)
-        sys.exit(0)
+        exit(0)
 
     return handler
 
 
-signal.signal(signal.SIGINT, get_shutdown_handler('SIGINT received'))
-signal.signal(signal.SIGTERM, get_shutdown_handler('SIGTERM received'))
-
+signal(SIGINT, get_shutdown_handler('SIGINT received'))
+signal(SIGTERM, get_shutdown_handler('SIGTERM received'))
 
 # Start up the display
-lcd = triangula.lcd.LCD()
+lcd = LCD()
 
 # Construct a HoloChassis object to perform drive calculations, using the convenience
 # method to build one with regular triangular geometry and identical wheels.
-chassis = triangula.chassis.get_regular_triangular_chassis(
+chassis = get_regular_triangular_chassis(
     wheel_distance=290,
     wheel_radius=60,
     max_rotations_per_second=1.0)
 
 # Connect to the Arduino Nano over I2C, motors and lights are attached to the nano
-arduino = triangula.arduino.Arduino()
+arduino = Arduino()
 
 while 1:
     try:
-        with triangula.input.SixAxisResource(bind_defaults=False) as joystick:
+        with SixAxisResource(bind_defaults=False) as joystick:
             lcd.set_text(row1='Triangula', row2='Controller found')
-            task_manager = triangula.task.TaskManager(arduino=arduino, lcd=lcd, joystick=joystick, chassis=chassis)
-            task_manager.run(initial_task=triangula.task.MenuTask())
+            task_manager = TaskManager(arduino=arduino, lcd=lcd, joystick=joystick, chassis=chassis)
+            task_manager.run(initial_task=MenuTask())
     except IOError:
         lcd.set_text(row1='Waiting for PS3', row2='controller...')

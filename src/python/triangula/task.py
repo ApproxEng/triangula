@@ -1,13 +1,9 @@
-import math
 import time
-from abc import ABCMeta, abstractmethod
 
 import triangula.chassis
 import triangula.imu
-from euclid import Vector2
-from triangula.chassis import Motion
+from abc import ABCMeta, abstractmethod
 from triangula.input import SixAxis
-from triangula.util import get_ip_address
 
 
 class TaskManager:
@@ -20,6 +16,7 @@ class TaskManager:
         self.lcd = lcd
         self.chassis = chassis
         self.joystick = joystick
+        self.home_task = None
 
     def _build_context(self, include_bearing):
         bearing = None
@@ -47,11 +44,14 @@ class TaskManager:
         task_initialised = False
         tick = 0
 
+        if self.home_task is None:
+            self.home_task = initial_task
+
         while 1:
             try:
                 context = self._build_context(active_task.requires_compass)
                 if context.button_pressed(SixAxis.BUTTON_SELECT):
-                    active_task = ClearStateTask(MenuTask())
+                    active_task = ClearStateTask(self.home_task)
                     task_initialised = False
                     tick = 0
                 if task_initialised:
@@ -204,36 +204,6 @@ class ClearStateTask(Task):
         return self.following_task
 
 
-class NetworkInfoTask(Task):
-    """
-    Simple task that gets the network address of the wired and wireless interfaces and displays them on the LCD.
-    """
-
-    def __init__(self):
-        super(NetworkInfoTask, self).__init__(task_name='Network info', requires_compass=False)
-        self.interfaces = ['eth0', 'wlan0']
-        self.selected_interface = 0
-
-    def init_task(self, context):
-        context.lcd.set_backlight(10, 10, 10)
-
-    def _increment_interface(self, delta):
-        self.selected_interface += delta
-        self.selected_interface %= len(self.interfaces)
-
-    def poll_task(self, context, tick):
-        if context.button_pressed(SixAxis.BUTTON_D_LEFT):
-            self._increment_interface(-1)
-        elif context.button_pressed(SixAxis.BUTTON_D_RIGHT):
-            self._increment_interface(1)
-        context.lcd.set_text(
-            row1='{}: {} of {}'.format(self.interfaces[self.selected_interface],
-                                       self.selected_interface + 1,
-                                       len(self.interfaces)),
-            row2=get_ip_address(ifname=self.interfaces[self.selected_interface]))
-        time.sleep(0.1)
-
-
 class ErrorTask(Task):
     """
     Task used to display an error message
@@ -257,137 +227,3 @@ class ErrorTask(Task):
         context.lcd.set_text(row1='ERROR!', row2=((' ' * 16) + str(self.exception) + (' ' * 16))[
                                                  tick % (len(str(self.exception)) + 16):])
         time.sleep(0.2)
-
-
-class MenuTask(Task):
-    """
-    Top level menu class
-    """
-
-    def __init__(self):
-        super(MenuTask, self).__init__(task_name='Menu', requires_compass=False)
-        self.tasks = [ManualMotionTask(), NetworkInfoTask(), CompassTestTask()]
-        self.selected_task_index = 0
-
-    def init_task(self, context):
-        time.sleep(0.05)
-        context.lcd.set_backlight(10, 10, 10)
-        time.sleep(0.05)
-        context.arduino.set_lights(170, 255, 60)
-
-    def _increment_index(self, delta):
-        self.selected_task_index += delta
-        self.selected_task_index %= len(self.tasks)
-
-    def poll_task(self, context, tick):
-        if context.button_pressed(SixAxis.BUTTON_D_LEFT):
-            self._increment_index(-1)
-        elif context.button_pressed(SixAxis.BUTTON_D_RIGHT):
-            self._increment_index(1)
-        elif context.button_pressed(SixAxis.BUTTON_CROSS):
-            return ClearStateTask(following_task=self.tasks[self.selected_task_index])
-        context.lcd.set_text(row1='Task {} of {}'.format(self.selected_task_index + 1, len(self.tasks)),
-                             row2=self.tasks[self.selected_task_index].task_name)
-        time.sleep(0.1)
-
-
-class CompassTestTask(Task):
-    """
-    Display the current compass bearing
-    """
-
-    def __init__(self):
-        super(CompassTestTask, self).__init__(task_name='Compass test', requires_compass=True)
-
-    def init_task(self, context):
-        pass
-
-    def poll_task(self, context, tick):
-        context.lcd.set_text(row1='Compass test', row2=str(math.degrees(context.bearing)))
-        time.sleep(0.1)
-
-
-class ManualMotionTask(Task):
-    """
-    Class enabling manual control of the robot from the joystick. Uses the IMU for bearing lock without any
-    form of dead-reckoning.
-    """
-
-    def __init__(self):
-        super(ManualMotionTask, self).__init__(task_name='Manual motion', requires_compass=True)
-        self.bearing_zero = None
-        self.last_bearing = 0
-        self.max_trn = 0
-        self.max_rot = 0
-
-    def _set_absolute_motion(self, context):
-        """
-        Lock motion to be compass relative, zero point (forwards) is the current bearing
-        """
-        time.sleep(0.05)
-        context.lcd.set_backlight(0, 10, 0)
-        time.sleep(0.05)
-        context.lcd.set_text(row1='Manual Control', row2='Absolute Motion')
-        time.sleep(0.05)
-        self.bearing_zero = self.last_bearing
-
-    def _set_relative_motion(self, context):
-        """
-        Set motion to be relative to the robot's reference frame
-        """
-        time.sleep(0.05)
-        context.lcd.set_backlight(10, 0, 0)
-        time.sleep(0.05)
-        context.lcd.set_text(row1='Manual Control', row2='Relative Motion')
-        time.sleep(0.05)
-        self.bearing_zero = None
-
-    def init_task(self, context):
-        # Maximum translation speed in mm/s
-        self.max_trn = context.chassis.get_max_translation_speed()
-        # Maximum rotation speed in radians/2
-        self.max_rot = context.chassis.get_max_rotation_speed()
-        self._set_relative_motion(context)
-
-    def poll_task(self, context, tick):
-        if context.bearing is not None:
-            self.last_bearing = context.bearing
-
-        if context.button_pressed(SixAxis.BUTTON_TRIANGLE):
-            self._set_relative_motion(context)
-        elif context.button_pressed(SixAxis.BUTTON_SQUARE):
-            self._set_absolute_motion(context)
-
-        # Get a vector from the left hand analogue stick and scale it up to our
-        # maximum translation speed, this will mean we go as fast directly forward
-        # as possible when the stick is pushed fully forwards
-        translate = Vector2(
-            context.joystick.axes[0].corrected_value(),
-            context.joystick.axes[1].corrected_value()) * self.max_trn
-
-        # If we're in absolute mode, rotate the translation vector appropriately
-        if self.bearing_zero is not None:
-            translate = triangula.chassis.rotate_vector(translate,
-                                                        self.last_bearing - self.bearing_zero)
-
-        # Get the rotation in radians per second from the right hand stick's X axis,
-        # scaling it to our maximum rotational speed. When standing still this means
-        # that full right on the right hand stick corresponds to maximum speed
-        # clockwise rotation.
-        rotate = context.joystick.axes[2].corrected_value() * self.max_rot
-
-        # Given the translation vector and rotation, use the chassis object to calculate
-        # the speeds required in revolutions per second for each wheel. We'll scale these by the
-        # wheel maximum speeds to get a range of -1.0 to 1.0
-        # This is a :class:`triangula.chassis.WheelSpeeds` containing the speeds and any
-        # scaling applied to bring the requested velocity within the range the chassis can
-        # actually perform.
-        wheel_speeds = context.chassis.get_wheel_speeds(motion=Motion(translation=translate, rotation=rotate))
-        speeds = wheel_speeds.speeds
-
-        # Send desired motor speed values over the I2C bus to the Arduino, which will
-        # then send the appropriate messages to the Syren10 controllers over its serial
-        # line as well as lighting up a neopixel ring to provide additional feedback
-        # and bling.
-        power = [speeds[i] / context.chassis.wheels[i].max_speed for i in range(0, 3)]
-        context.arduino.set_motor_power(power[0], power[1], power[2])

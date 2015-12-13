@@ -3,15 +3,14 @@
 
 import time
 
-import triangula.imu
-import triangula.chassis
 import triangula.arduino
+import triangula.chassis
+import triangula.imu
 import triangula.input
 import triangula.lcd
 import triangula.util
 from euclid import Vector2, Point2
-
-
+from triangula.chassis import Motion
 
 # Construct a HoloChassis object to perform drive calculations, using the convenience
 # method to build one with regular triangular geometry and identical wheels. The exact
@@ -105,9 +104,9 @@ while 1:
                 # This is a :class:`triangula.chassis.WheelSpeeds` containing the speeds and any
                 # scaling applied to bring the requested velocity within the range the chassis can
                 # actually perform.
-                wheel_speeds = chassis.get_wheel_speeds(
+                wheel_speeds = chassis.get_wheel_speeds(motion=Motion(
                     translation=translate,
-                    rotation=rotate,
+                    rotation=rotate),
                     origin=Point2(0, 0))
                 speeds = wheel_speeds.speeds
 
