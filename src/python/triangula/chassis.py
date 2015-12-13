@@ -1,4 +1,5 @@
 from math import cos, sin, degrees, radians, pi
+from time import time
 
 from euclid import Vector2, Point2
 from numpy import array as np_array
@@ -181,6 +182,107 @@ class Motion:
     def __str__(self):
         return 'Motion[ x={}, y={}, theta={} (deg={}) ]'.format(self.translation.x, self.translation.y, self.rotation,
                                                                 degrees(self.rotation))
+
+
+class DeadReckoning:
+    """
+    Encapsulates the logic required to track the robot's position in world space using wheel encoders and chassis
+    kinematics. To update the state of this object you need to call the update_from_counts function - this will
+    compute the difference in counts for each wheel, and from this derive the rotational speed for each wheel since
+    the last measurement. The :class:`triangula.chassis.HoloChassis` is then used to convert these speeds into an arc,
+    with the assumption that wheel speeds were constant during the time interval. This arc is used to update the
+    :class:`triangula.chassis.Pose` representing the current best estimate of the robot's position.
+
+    Because this is in effect integrating over sensor readings, any errors, particularly in the chassis geometry or
+    dimensions, or in the number of counts per revolution (for example if the gearing isn't quite what you think it is
+    or there's enough slop in the gearbox that readings can drift) will accumulate over time. To mitigate this, if you
+    have precise instantaneous information such as a compass reading every few seconds, these readings can be used to
+    explicitly set the position, orientation, or both of the :class:`triangula.chassis.Pose` tracked by this class.
+
+    As there's an implicit assumption that wheel speeds are constant between encoder readings, this class will yield
+    more accurate results when updated frequently. The exact optimal update frequency will depend on the encoder
+    resolutions, chassis geometry etc. Some manual tuning may be required.
+    """
+
+    def __init__(self, chassis, counts_per_revolution=64 * 19, max_count_value=1 << 16):
+        """
+        Constructor
+
+        :param triangula.chassis.HoloChassis chassis:
+            The :class:`triangula.chassis.HoloChassis` to be used to define kinematics for this DeadReckoning
+        :param float counts_per_revolution:
+            The number of counts registered by the wheel encoders per revolution of the wheel. Defaults to 64*19 to
+            be the 64 count encoder fitted to a 19:1 reduction gearbox.
+        :param int max_count_value:
+            The largest value read from the encoders, this is used to determine when we've wrapped around the zero
+            point, defaults to 1<<16 to reflect that count values are held in the microcontroller module as a uint16_t
+        """
+        self.chassis = chassis
+        self.counts_per_revolution = counts_per_revolution
+        self.max_count_value = max_count_value
+        self.last_encoder_values = None
+        self.last_reading_time = None
+        self.pose = None
+
+    def reset(self):
+        """
+        Clear the state of this :class:`triangula.chassis.DeadReckoning`
+        """
+        self.last_encoder_values = None
+        self.last_reading_time = None
+        self.pose = None
+
+    def set_position(self, position):
+        """
+        Explicitly set the position of the robot in world coordinates. Overrides the current value tracked by this
+        instance. Use this when you have better information and want to update the state accordingly.
+
+        :param euclid.Point2 position:
+            The new position to set, as a :class:`euclid.Point2`, coordinates are in mm
+        """
+        self.pose.position = position
+        return self.pose
+
+    def set_orientation(self, orientation):
+        """
+        Explicitly set the orientation of the robot in world coordinates. Use this to explicitly update the orientation,
+        for example when you have a sufficiently accurate compass fix that it can be used to eliminate any accumulated
+        errors built up by the dead reckoning algorithm.
+
+        :param float orientation:
+            The new orientation to set, in radians from the positive Y axis, clockwise rotations being positive. This
+            value will be normalised to the range 0-2PI
+        :return:
+            The current (updated) value of the :class:`triangula.chassis.Pose`
+        """
+        self.pose.orientation = orientation % (2 * pi)
+        return self.pose
+
+    def update_from_counts(self, counts):
+        """
+        Update the pose from a new set of encoder values
+
+        :param counts:
+            A list of encoder counts, one per wheel
+        :return:
+            The updated :class:`triangula.chassis.Pose` object (this is also modified in the internal state of the
+            DeadReckoning)
+        """
+        reading_time = time()
+        if self.last_encoder_values is None:
+            self.last_encoder_values = counts
+            self.last_reading_time = reading_time
+            self.pose = Pose(Point2(0, 0), 0)
+        else:
+            time_delta = reading_time - self.last_reading_time
+            wheel_speeds = [smallest_difference(last_reading, current_reading, self.max_count_value) / (
+                self.counts_per_revolution * time_delta) for last_reading, current_reading
+                            in zip(counts, self.last_encoder_values)]
+            motion = self.chassis.calculate_motion(speeds=wheel_speeds)
+            self.pose = self.pose.calculate_pose_change(motion, time_delta)
+            self.last_encoder_values = counts
+            self.last_reading_time = reading_time
+        return self.pose
 
 
 class Pose:
