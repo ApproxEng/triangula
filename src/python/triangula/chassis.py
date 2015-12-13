@@ -1,4 +1,4 @@
-from math import cos, sin, pi, radians
+from math import cos, sin, degrees, radians, pi
 
 from euclid import Vector2, Point2
 from numpy import array as np_array
@@ -41,8 +41,8 @@ def rotate_vector(vector, angle, origin=None):
     """
     Rotate a :class:`euclid.Vector2` around a :class:`euclid.Point2`
 
-    :param euclid.Point2 point:
-        The point to rotate
+    :param euclid.Vector2 vector:
+        The vector to rotate
     :param float angle:
         Angle in radians, anti-clockwise rotation
     :param euclid.Point2 origin:
@@ -56,6 +56,38 @@ def rotate_vector(vector, angle, origin=None):
     c = cos(angle)
     return Vector2(c * (vector.x - origin.x) - s * (vector.y - origin.y) + origin.x,
                    s * (vector.x - origin.x) + c * (vector.y - origin.y) + origin.y)
+
+
+def smallest_difference(a, b, max_value=2 * pi):
+    """
+    Given two floats, a and b, and a maximum possible value for both a and b, calculate the smallest delta from a to b.
+    For example, if a=1.0, b=2.5 and max_value=2.6, this should return -1.1, as subtracting 1.1 from a would result in
+    -0.1, which will then be transformed to 2.5 after taking its modulus with 2.6. If max_value was 10, it would return
+    +1.5, as this is the lower magnitude delta needed to go from 1.0 to 2.5. This function is used when calculating the
+    shortest delta between two pose orientations, for this reason the max_value defaults to 2*pi for use when working
+    in radians.
+
+    If either a or b are less than zero or greater than the maximum value they will be treated as a % max_value or b %
+    max_value respectively for the purposes of this calculation.
+
+    :param float a:
+        First value (see above)
+    :param b:
+        Second value (see above)
+    :param max_value:
+        Modulus, defaults to 2*pi if not specified
+    :return:
+        A value d such that (a + d) % max_value == b, and abs(d) is minimal (as there would be an infinite number of
+        possible d that satisfy this relationship).
+    """
+    mod_a = a % max_value
+    mod_b = b % max_value
+    if abs(mod_a - mod_b) <= max_value / 2:
+        return mod_b - mod_a
+    elif mod_a >= mod_b:
+        return max_value - (mod_a + mod_b)
+    else:
+        return mod_b + mod_a - max_value
 
 
 def get_regular_triangular_chassis(wheel_distance, wheel_radius, max_rotations_per_second):
@@ -126,26 +158,109 @@ class WheelSpeeds:
 
 class Motion:
     """
-    A container to hold the translation and rotation vector
+    A container to hold the translation and rotation vector representing the robot's motion. This is always expressed
+    in the robot's coordinate frame, so a translation component of 0,1 always means the robot is heading forwards,
+    irrespective of the current orientation of the robot (i.e. if the robot was turned 90 degrees in world space this
+    0,1 motion would be a movement along the X axis in world space, but the Y axis in robot space). The rotation
+    component of the motion is expressed in radians per second, positive values corresponding to clockwise rotation
+    when viewed from the direction relative to the plane such that X is positive to the right and Y positive upwards.
     """
 
-    def __init__(self, x, y, rotation):
+    def __init__(self, translation, rotation):
         """
         Constructor
 
-        :param x:
-            Translation vector x component in mm per second
-        :param y:
-            Translation vector y component in mm per second
+        :param euclid.Vector2 translation:
+            Vector2 representing the translation component in robot coordinate space of the motion.
         :param rotation:
             Rotation in radians per second
         """
-        self.x = x
-        self.y = y
+        self.translation = translation
         self.rotation = rotation
 
     def __str__(self):
-        return 'Motion[ x={}, y={}, theta={} ]'.format(self.x, self.y, self.rotation)
+        return 'Motion[ x={}, y={}, theta={} (deg={}) ]'.format(self.translation.x, self.translation.y, self.rotation,
+                                                                degrees(self.rotation))
+
+
+class Pose:
+    """
+    A container to hold the position as a Point2 along with orientation in radians, where 0 corresponds to the positive
+    Y axis (0,1). Orientation is expressed in radians, with positive values indicating a rotation from the positive Y
+    axis in the clockwise direction, i.e. a rotation of 0 is North, pi/2 East, pi South and 3pi/2 West.
+    """
+
+    def __init__(self, position, orientation):
+        """
+        Constructor
+
+        :param euclid.Point2 position:
+            A Point2 containing the position of the centre of the robot
+        :param float orientation:
+            Orientation in radians, 0 being the positive Y axis, positive values correspond to clockwise rotations, i.e.
+            pi/4 is East. This value will be normalised to be between 0 and 2 * pi
+        """
+        self.position = position
+        self.orientation = orientation % (2 * pi)
+
+    def pose_to_pose_vector(self, to_pose):
+        """
+        Calculates the Vector2, in robot coordinate space (remember that Pose objects use world coordinates!) that
+        represents the translation required to move from this Pose to the specified target Pose.
+
+        :param triangula.chassis.Pose to_pose:
+            A target :class:`triangula.chassis.Pose`, the resultant vector in robot space will translate the robot to
+            the position contained in this pose. Note that this does not take any account of the orientation component
+            of the to_pose, only the starting one.
+        :return:
+            A :class:`euclid.Vector2` containing the translation part, in robot space, of the motion required to move
+            from this Pose to the target.
+        """
+        return rotate_vector(
+            vector=Vector2(to_pose.position.x - self.position.x, to_pose.position.y - self.position.y),
+            angle=-self.orientation)
+
+    def calculate_pose_change(self, motion, time):
+        """
+        Given this as the starting Pose, a Motion and a time in seconds, calculate the resultant Pose at the end of the
+        time interval.
+
+        This makes use of the fact that if you travel in a consistent direction while turning at a constant rate you
+        will describe an arc. By calculating the centre point of this arc we can simply rotate the starting pose around
+        this centre point. This is considerably simpler than integrating over the motion 3-vector. A special case is
+        used to avoid division by zero errors when there is no rotation component to the motion.
+
+        :param triangula.chassis.Motion motion:
+            The motion of the robot, assumed to be constant for the duration of the time interval. The motion is
+            expressed in the robot's coordinate frame, so a translation of (0,1) is always a forward motion,
+            irrespective of the current orientation.
+        :param float time:
+            The time in seconds
+        :return:
+            A :class:`triangula.chassis.Pose` which represents resultant pose after applying the supplied motion for the
+            given time.
+        """
+        if motion.rotation != 0:
+            # Trivially, the final orientation is the starting orientation plus the rotation in radians per second
+            # multiplied by the time in seconds.
+            final_orientation = self.orientation + motion.rotation * time
+            # We've moved motion.rotation/2PI revolutions, and a revolution is 2PI*r, so we've moved motion.rotation*r,
+            # so r is abs(translation)/motion.rotation, meaning our centre point is at normalise(translation).cross() *
+            # abs(translation) / motion.rotation, i.e. translation.cross() / motion.rotation
+            centre_of_rotation_as_vector = rotate_vector(motion.translation,
+                                                         -self.orientation).cross() / motion.rotation
+            centre_of_rotation = Point2(x=centre_of_rotation_as_vector.x, y=centre_of_rotation_as_vector.y)
+            # Now rotate the starting_pose.position around the centre of rotation, by the motion.rotation angle
+            final_position = rotate_point(self.position, motion.rotation, centre_of_rotation)
+            return Pose(position=final_position, orientation=final_orientation)
+        else:
+            # No rotation, avoid the divide by zero catch in the above block and simply add the translation component
+            return Pose(position=self.position + rotate_vector(motion.translation, -self.orientation),
+                        orientation=self.orientation)
+
+    def __str__(self):
+        return 'Pose[x={}, y={}, orientation={} (deg={})]'.format(self.position.x, self.position.y, self.orientation,
+                                                                  degrees(self.orientation))
 
 
 class HoloChassis:
@@ -176,11 +291,12 @@ class HoloChassis:
             An array of wheel speeds, expressed as floats with units of radians per second, positive being towards
             the wheel vector.
         :return:
-            A :class:`triangula.chassis.Motion` object containing the calculated translation and rotation
+            A :class:`triangula.chassis.Motion` object containing the calculated translation and rotation in the robot's
+            coordinate space.
         """
         motion_array = np_solve(self._matrix_coefficients, np_array(speeds))
-        return Motion(x=float(motion_array[0]),
-                      y=float(motion_array[1]),
+        return Motion(Vector2(x=float(motion_array[0]),
+                              y=float(motion_array[1])),
                       rotation=float(motion_array[2]))
 
     def get_max_translation_speed(self):

@@ -1,9 +1,9 @@
 import math
 import time
+from abc import ABCMeta, abstractmethod
 
 import triangula.chassis
 import triangula.imu
-from abc import ABCMeta, abstractmethod
 from euclid import Vector2, Point2
 from triangula.input import SixAxis
 from triangula.util import get_ip_address
@@ -107,6 +107,7 @@ class TaskContext:
         self.joystick = joystick
         self.buttons_pressed = buttons_pressed
         self.timestamp = time.time()
+        self.imu_data = imu_data
 
     def button_pressed(self, button_code):
         """
@@ -307,7 +308,8 @@ class CompassTestTask(Task):
 
 class ManualMotionTask(Task):
     """
-    Class enabling manual control of the robot from the joystick.
+    Class enabling manual control of the robot from the joystick. Uses the IMU for bearing lock without any
+    form of dead-reckoning.
     """
 
     def __init__(self):
