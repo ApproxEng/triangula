@@ -90,7 +90,7 @@ while 1:
                 # If we're in absolute mode, rotate the translation vector appropriately
                 if state['bearing_zero'] is not None:
                     translate = triangula.chassis.rotate_vector(translate,
-                                                                state['last_bearing'] - state['bearing_zero'])
+                                                                state['bearing_zero'] - state['last_bearing'])
 
                 # Get the rotation in radians per second from the right hand stick's X axis,
                 # scaling it to our maximum rotational speed. When standing still this means

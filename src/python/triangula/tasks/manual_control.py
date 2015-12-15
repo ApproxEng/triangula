@@ -81,7 +81,7 @@ class ManualMotionTask(Task):
         # If we're in absolute mode, rotate the translation vector appropriately
         if self.bearing_zero is not None:
             translate = rotate_vector(translate,
-                                      self.dead_reckoning.pose.orientation - self.bearing_zero)
+                                      self.bearing_zero - self.dead_reckoning.pose.orientation)
 
         # Get the rotation in radians per second from the right hand stick's X axis,
         # scaling it to our maximum rotational speed. When standing still this means
