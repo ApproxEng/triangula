@@ -9,8 +9,9 @@ from triangula.util import IntervalCheck
 
 class ManualMotionTask(Task):
     """
-    Class enabling manual control of the robot from the joystick. Uses the IMU for bearing lock without any
-    form of dead-reckoning.
+    Class enabling manual control of the robot from the joystick. Uses dead-reckoning for bearing lock, we don't
+    use the IMU at all in this version of the class, it was proving problematic in real-world conditions and the
+    dead-reckoning logic is surprisingly accurate and stable.
     """
 
     def __init__(self):
