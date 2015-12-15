@@ -284,6 +284,7 @@ class DeadReckoning:
             print 'speeds a={}, b={}, c={}'.format(a, b, c)
             motion = self.chassis.calculate_motion(speeds=wheel_speeds)
             print 'motion={}'.format(str(motion))
+            print 'time_delta={}'.format(time_delta)
             self.pose = self.pose.calculate_pose_change(motion, time_delta)
             self.last_encoder_values = counts
             self.last_reading_time = reading_time
