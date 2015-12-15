@@ -10,7 +10,7 @@ This is the minimum delay between instructions to the LCD in seconds.
 MIN_DELAY = 0.05
 
 
-class LCD():
+class LCD:
     """
     Handle the serial attached LCD display
 
@@ -25,8 +25,9 @@ class LCD():
         self.ser = serial.Serial(port='/dev/ttyAMA0', baudrate=9600)
         self.row1 = ''
         self.row2 = ''
-        self.clear()
         self.last_time = time()
+        self.clear()
+
 
     def set_text(self, row1=None, row2=None):
         """
