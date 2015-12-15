@@ -9,7 +9,7 @@ from setuptools import setup
 
 setup(
     name='triangula',
-    version='0.2.1',
+    version='0.3.0',
     description='Code for Triangula',
     classifiers=['Programming Language :: Python :: 2.7'],
     url='https://github.com/tomoinn/triangula/',

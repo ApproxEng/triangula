@@ -24,7 +24,7 @@ def rotate_point(point, angle, origin=None):
     :param euclid.Point2 point:
         The point to rotate
     :param float angle:
-        Angle in radians, anti-clockwise rotation
+        Angle in radians, clockwise rotation
     :param euclid.Point2 origin:
         Origin of the rotation, defaults to (0,0) if not specified
     :return:
@@ -32,8 +32,8 @@ def rotate_point(point, angle, origin=None):
     """
     if origin is None:
         origin = Point2(0, 0)
-    s = sin(angle)
-    c = cos(angle)
+    s = sin(-angle)
+    c = cos(-angle)
     return Point2(c * (point.x - origin.x) - s * (point.y - origin.y) + origin.x,
                   s * (point.x - origin.x) + c * (point.y - origin.y) + origin.y)
 
@@ -45,7 +45,7 @@ def rotate_vector(vector, angle, origin=None):
     :param euclid.Vector2 vector:
         The vector to rotate
     :param float angle:
-        Angle in radians, anti-clockwise rotation
+        Angle in radians, clockwise rotation
     :param euclid.Point2 origin:
         Origin of the rotation, defaults to (0,0) if not specified
     :return:
@@ -53,8 +53,8 @@ def rotate_vector(vector, angle, origin=None):
     """
     if origin is None:
         origin = Point2(0, 0)
-    s = sin(angle)
-    c = cos(angle)
+    s = sin(-angle)
+    c = cos(-angle)
     return Vector2(c * (vector.x - origin.x) - s * (vector.y - origin.y) + origin.x,
                    s * (vector.x - origin.x) + c * (vector.y - origin.y) + origin.y)
 
@@ -116,13 +116,13 @@ def get_regular_triangular_chassis(wheel_distance, wheel_radius, max_rotations_p
         max_speed=max_rotations_per_second)
     # Yellow
     wheel_b = HoloChassis.OmniWheel(
-        position=rotate_point(point, -pi * 2 / 3),
-        vector=rotate_vector(vector, -pi * 2 / 3),
+        position=rotate_point(point, pi * 2 / 3),
+        vector=rotate_vector(vector, pi * 2 / 3),
         max_speed=max_rotations_per_second)
     # Green
     wheel_c = HoloChassis.OmniWheel(
-        position=rotate_point(point, -pi * 4 / 3),
-        vector=rotate_vector(vector, -pi * 4 / 3),
+        position=rotate_point(point, pi * 4 / 3),
+        vector=rotate_vector(vector, pi * 4 / 3),
         max_speed=max_rotations_per_second)
 
     return HoloChassis(wheels=[wheel_a, wheel_b, wheel_c])
@@ -167,16 +167,20 @@ class Motion:
     when viewed from the direction relative to the plane such that X is positive to the right and Y positive upwards.
     """
 
-    def __init__(self, translation, rotation):
+    def __init__(self, translation=None, rotation=0):
         """
         Constructor
 
         :param euclid.Vector2 translation:
-            Vector2 representing the translation component in robot coordinate space of the motion.
-        :param rotation:
-            Rotation in radians per second
+            Vector2 representing the translation component in robot coordinate space of the motion. Defaults to
+            Vector2(0,0)
+        :param float rotation:
+            Rotation in radians per second. Defaults to 0.
         """
-        self.translation = translation
+        if translation is not None:
+            self.translation = translation
+        else:
+            self.translation = Vector2(0, 0)
         self.rotation = rotation
 
     def __str__(self):
@@ -292,18 +296,63 @@ class Pose:
     axis in the clockwise direction, i.e. a rotation of 0 is North, pi/2 East, pi South and 3pi/2 West.
     """
 
-    def __init__(self, position, orientation):
+    def __init__(self, position=None, orientation=0):
         """
         Constructor
 
         :param euclid.Point2 position:
-            A Point2 containing the position of the centre of the robot
+            A Point2 containing the position of the centre of the robot. Defaults to Point2(0,0)
         :param float orientation:
             Orientation in radians, 0 being the positive Y axis, positive values correspond to clockwise rotations, i.e.
-            pi/4 is East. This value will be normalised to be between 0 and 2 * pi
+            pi/4 is East. This value will be normalised to be between 0 and 2 * pi. Defaults to 0
         """
-        self.position = position
+        if position is not None:
+            self.position = position
+        else:
+            self.position = Point2(0, 0)
         self.orientation = orientation % (2 * pi)
+
+    def distance_to_pose(self, to_pose):
+        """
+        Return the distance to the other pose position
+
+        :param triangula.chassis.Pose to_pose:
+            The target pose
+        """
+        return abs(self.position - to_pose.position)
+
+    def is_close_to(self, to_pose, max_distance=0.001, max_orientation_difference=radians(1)):
+        """
+        Check whether we're close to the specified pose, defining closeness as both distance on the plane and difference
+        in orientation.
+
+        :param to_pose:
+            The target pose
+        :param max_distance:
+            Maximum distance within which we'll count as being close, defaults to 0.001
+        :param max_orientation_difference:
+            Maximum number of radians we can be off the target pose's orientation to count as close, defaults to 1
+            degree (calculated with ``radians(1)``)
+        :return:
+            True if this pose is regarded as close to the other, False otherwise
+        """
+        if self.distance_to_pose(to_pose) > max_distance:
+            return False
+        elif smallest_difference(self.orientation, to_pose.orientation) > max_orientation_difference:
+            return False
+        else:
+            return True
+
+    def translate(self, vector):
+        """
+        Create a new pose, with the same orientation as this one and the specified translation applied to its position.
+
+        :param euclid.Vector2 vector:
+            Vector by which the position of this pose should be translated when creating the new Pose
+        :return:
+            Returns the new Pose
+        """
+        return Pose(position=self.position + vector, orientation=self.orientation)
 
     def pose_to_pose_vector(self, to_pose):
         """
@@ -342,28 +391,21 @@ class Pose:
             A :class:`triangula.chassis.Pose` which represents resultant pose after applying the supplied motion for the
             given time.
         """
-        if motion.rotation != 0:
-            # Trivially, the final orientation is the starting orientation plus the rotation in radians per second
-            # multiplied by the time in seconds.
-            final_orientation = self.orientation - motion.rotation * time_delta
-            # We've moved motion.rotation/2PI revolutions, and a revolution is 2PI*r, so we've moved motion.rotation*r,
-            # so r is abs(translation)/motion.rotation, meaning our centre point is at normalise(translation).cross() *
-            # abs(translation) / motion.rotation, i.e. translation.cross() / motion.rotation
-            centre_of_rotation_as_vector = rotate_vector(motion.translation,
-                                                         -self.orientation).cross() / motion.rotation
-            centre_of_rotation = Point2(x=centre_of_rotation_as_vector.x, y=centre_of_rotation_as_vector.y)
-            # Now rotate the starting_pose.position around the centre of rotation, by the motion.rotation angle
-            final_position = rotate_point(self.position, -motion.rotation * time_delta,
-                                          centre_of_rotation + self.position)
-            return Pose(position=final_position, orientation=final_orientation)
+
+        # Total delta in orientation angle over the time interval
+        orientation_delta = motion.rotation * time_delta
+        # Scaled translation vector rotated into world coordinate space (motion uses robot space)
+        translation_vector_world = rotate_vector(motion.translation, self.orientation) * time_delta
+        ':type : euclid.Vector2'
+
+        if orientation_delta == 0:
+            # No orientation, trivially add the rotated, scaled, translation vector to the current pose
+            return self.translate(translation_vector_world)
         else:
-            # No rotation, avoid the divide by zero catch in the above block and simply add the translation component
-            # multiplied by the time delta (this is safe, we can multiply a vector by a scalar and end up with that
-            # Vector2 scaled appropriately)
-            translation_in_time = motion.translation * time_delta
-            ':type : euclid.Vector2'
-            return Pose(position=self.position + rotate_vector(translation_in_time, -self.orientation),
-                        orientation=self.orientation)
+            centre_of_rotation = self.position + translation_vector_world.cross() / orientation_delta
+            ':type : euclid.Point2'
+            final_position = rotate_point(self.position, angle=orientation_delta, origin=centre_of_rotation)
+            return Pose(position=final_position, orientation=self.orientation + orientation_delta)
 
     def __str__(self):
         return 'Pose[x={}, y={}, orientation={} (deg={})]'.format(self.position.x, self.position.y, self.orientation,

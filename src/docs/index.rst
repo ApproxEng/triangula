@@ -7,10 +7,13 @@ Contents:
 
 .. toctree::
     :maxdepth: 2
+    :glob:
 
     config
-    api
     sixaxis
+    api
+    api/*
+
 
 Indices and tables
 ==================

@@ -1,5 +1,5 @@
-Playstation 3 Controllers
-=========================
+Configuring Playstation 3 Controllers
+=====================================
 
 If you're building a robot you will at some point probably want a way to manually drive it around. The Playstation3
 controller, also known as the SixAxis, makes for a great option - it connects over bluetooth, has a bundle of different
