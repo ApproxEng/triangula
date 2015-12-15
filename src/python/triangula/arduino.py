@@ -124,7 +124,7 @@ class Arduino:
                 # Prod the appropriate control register
                 self._send(register, [0])
                 # Delay for an arbitrary amount of time
-                sleep(self._i2c_delay)
+                sleep(self._i2c_delay*10)
                 # Call read_byte repeatedly to assemble our output data
                 data = [self._bus.read_byte(self._address) for _ in xrange(bytes_to_read)]
                 return data
