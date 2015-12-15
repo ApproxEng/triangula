@@ -360,7 +360,8 @@ class Pose:
             centre_of_rotation = Point2(x=centre_of_rotation_as_vector.x, y=centre_of_rotation_as_vector.y)
             print 'centre of rotation = {}'.format(str(centre_of_rotation))
             # Now rotate the starting_pose.position around the centre of rotation, by the motion.rotation angle
-            final_position = rotate_point(self.position, -motion.rotation * time_delta, centre_of_rotation)
+            final_position = rotate_point(self.position, -motion.rotation * time_delta,
+                                          centre_of_rotation + self.position)
             return Pose(position=final_position, orientation=final_orientation)
         else:
             # No rotation, avoid the divide by zero catch in the above block and simply add the translation component
