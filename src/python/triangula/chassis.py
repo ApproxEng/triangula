@@ -345,7 +345,7 @@ class Pose:
         if motion.rotation != 0:
             # Trivially, the final orientation is the starting orientation plus the rotation in radians per second
             # multiplied by the time in seconds.
-            final_orientation = self.orientation + motion.rotation * time_delta
+            final_orientation = self.orientation - motion.rotation * time_delta
             # We've moved motion.rotation/2PI revolutions, and a revolution is 2PI*r, so we've moved motion.rotation*r,
             # so r is abs(translation)/motion.rotation, meaning our centre point is at normalise(translation).cross() *
             # abs(translation) / motion.rotation, i.e. translation.cross() / motion.rotation
@@ -358,7 +358,9 @@ class Pose:
             return Pose(position=final_position, orientation=final_orientation)
         else:
             # No rotation, avoid the divide by zero catch in the above block and simply add the translation component
-            return Pose(position=self.position + rotate_vector(motion.translation, -self.orientation),
+            # multiplied by the time delta (this is safe, we can multiply a vector by a scalar and end up with that
+            # Vector2 scaled appropriately)
+            return Pose(position=self.position + rotate_vector(motion.translation * time_delta, -self.orientation),
                         orientation=self.orientation)
 
     def __str__(self):
