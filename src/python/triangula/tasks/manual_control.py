@@ -62,8 +62,8 @@ class ManualMotionTask(Task):
         if now - self.last_time > 0.2:
             # Get the encoder counts and update the dead reckoning logic
             pose = self.dead_reckoning.update_from_counts(context.arduino.get_encoder_values())
-            context.lcd.set_text(row1='x: {:5.0f} y: {:5.0f}'.format(pose.position.x, pose.position.y),
-                                 row2='r: {:3.0f}'.format(degrees(pose.orientation)))
+            context.lcd.set_text(row1='{:6.0f},{:6.0f}'.format(pose.position.x, pose.position.y),
+                                 row2='bearing: {:3.0f}'.format(degrees(pose.orientation)))
             self.last_time = now
 
         # Get a vector from the left hand analogue stick and scale it up to our
