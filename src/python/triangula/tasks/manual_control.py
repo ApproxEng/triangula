@@ -57,7 +57,7 @@ class ManualMotionTask(Task):
         elif context.button_pressed(SixAxis.BUTTON_CROSS):
             pose = self.dead_reckoning.pose
             context.lcd.set_text(row1='x: {:5.0f} y: {:5.0f}'.format(pose.position.x, pose.position.y),
-                                 row2='r: {0:03d}'.format(degrees(pose.orientation)))
+                                 row2='r: {:3.0f}'.format(degrees(pose.orientation)))
 
         # Get the encoder counts and update the dead reckoning logic
         self.dead_reckoning.update_from_counts(context.arduino.get_encoder_values())
