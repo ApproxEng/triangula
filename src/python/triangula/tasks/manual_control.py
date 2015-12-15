@@ -1,10 +1,10 @@
 from math import degrees
-from time import time
 
 from euclid import Vector2
 from triangula.chassis import rotate_vector, Motion, DeadReckoning
 from triangula.input import SixAxis
 from triangula.task import Task
+from triangula.util import IntervalCheck
 
 
 class ManualMotionTask(Task):
@@ -20,7 +20,8 @@ class ManualMotionTask(Task):
         self.max_trn = 0
         self.max_rot = 0
         self.dead_reckoning = None
-        self.last_time = time()
+        self.pose_display_interval = IntervalCheck(interval=0.2)
+        self.pose_update_interval = IntervalCheck(interval=0.1)
 
     def _set_absolute_motion(self, context):
         """
@@ -58,13 +59,14 @@ class ManualMotionTask(Task):
             self.dead_reckoning.reset()
 
         # Check to see whether the minimum interval between dead reckoning updates has passed
-        now = time()
-        if now - self.last_time > 0.2:
-            # Get the encoder counts and update the dead reckoning logic
-            pose = self.dead_reckoning.update_from_counts(context.arduino.get_encoder_values())
-            context.lcd.set_text(row1='{:6.0f},{:6.0f}'.format(pose.position.x, pose.position.y),
-                                 row2='bearing: {:3.0f}'.format(degrees(pose.orientation)))
-            self.last_time = now
+        if self.pose_update_interval.should_run():
+            self.dead_reckoning.update_from_counts(context.arduino.get_encoder_values())
+
+        # Update the display if appropriate
+        if self.pose_display_interval.should_run():
+            pose = self.dead_reckoning.pose
+            context.lcd.set_text(row1='x:{:7.0f}, b:{:3.0f}'.format(pose.position.x, degrees(pose.orientation)),
+                                 row2='y:{:7.0f}'.format(pose.position.y))
 
         # Get a vector from the left hand analogue stick and scale it up to our
         # maximum translation speed, this will mean we go as fast directly forward

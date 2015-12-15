@@ -1,8 +1,36 @@
 __author__ = 'tom'
 
-import socket
 import fcntl
+import socket
 import struct
+from time import time
+
+
+class IntervalCheck:
+    """
+    Utility class which can be used to run code within a polling loop at most once per n seconds. Set up an instance
+    of this class with the minimum delay between invocations then enclose the guarded code in a construct such as
+    if interval.should_run(): - this will manage the scheduling and ensure that the inner code will only be called if
+    at least the specified amount of time has elapsed.
+    """
+
+    def __init__(self, interval):
+        """
+        Constructor
+
+        :param float interval:
+            The number of seconds that must pass between True values from the should_run() function
+        """
+        self.interval = interval
+        self.last_time = None
+
+    def should_run(self):
+        now = time()
+        if self.last_time is None or now - self.last_time > self.interval:
+            self.last_time = now
+            return True
+        else:
+            return False
 
 
 def get_ip_address(ifname='wlan0'):
