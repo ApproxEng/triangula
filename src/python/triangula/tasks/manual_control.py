@@ -44,7 +44,7 @@ class ManualMotionTask(Task):
         # Maximum rotation speed in radians/2
         self.max_rot = context.chassis.get_max_rotation_speed()
         self._set_relative_motion(context)
-        self.dead_reckoning = DeadReckoning(chassis=context.chassis)
+        self.dead_reckoning = DeadReckoning(chassis=context.chassis, counts_per_revolution=3310)
 
     def poll_task(self, context, tick):
         if context.bearing is not None:

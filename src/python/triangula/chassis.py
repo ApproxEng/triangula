@@ -275,16 +275,10 @@ class DeadReckoning:
             self.pose = Pose(Point2(0, 0), 0)
         else:
             time_delta = reading_time - self.last_reading_time
-            (count_a, count_b, count_c) = counts
-            print 'counts a={}, b={}, c={}'.format(count_a, count_b, count_c)
             wheel_speeds = [smallest_difference(last_reading, current_reading, self.max_count_value) / (
                 self.counts_per_revolution * time_delta) for last_reading, current_reading
                             in zip(counts, self.last_encoder_values)]
-            (a, b, c) = wheel_speeds
-            print 'speeds a={}, b={}, c={}'.format(a, b, c)
             motion = self.chassis.calculate_motion(speeds=wheel_speeds)
-            print 'motion={}'.format(str(motion))
-            print 'time_delta={}'.format(time_delta)
             self.pose = self.pose.calculate_pose_change(motion, time_delta)
             self.last_encoder_values = counts
             self.last_reading_time = reading_time
@@ -358,7 +352,6 @@ class Pose:
             centre_of_rotation_as_vector = rotate_vector(motion.translation,
                                                          -self.orientation).cross() / motion.rotation
             centre_of_rotation = Point2(x=centre_of_rotation_as_vector.x, y=centre_of_rotation_as_vector.y)
-            print 'centre of rotation = {}'.format(str(centre_of_rotation))
             # Now rotate the starting_pose.position around the centre of rotation, by the motion.rotation angle
             final_position = rotate_point(self.position, -motion.rotation * time_delta,
                                           centre_of_rotation + self.position)
