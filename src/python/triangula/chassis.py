@@ -360,7 +360,9 @@ class Pose:
             # No rotation, avoid the divide by zero catch in the above block and simply add the translation component
             # multiplied by the time delta (this is safe, we can multiply a vector by a scalar and end up with that
             # Vector2 scaled appropriately)
-            return Pose(position=self.position + rotate_vector(motion.translation * time_delta, -self.orientation),
+            translation_in_time = motion.translation * time_delta
+            ':type : euclid.Vector2'
+            return Pose(position=self.position + rotate_vector(translation_in_time, -self.orientation),
                         orientation=self.orientation)
 
     def __str__(self):

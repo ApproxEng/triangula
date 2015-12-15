@@ -14,30 +14,13 @@ class ManualMotionTask(Task):
     """
 
     def __init__(self):
-        super(ManualMotionTask, self).__init__(task_name='Manual motion', requires_compass=True)
+        super(ManualMotionTask, self).__init__(task_name='Manual motion', requires_compass=False)
         self.bearing_zero = None
-        self.last_bearing = 0
         self.max_trn = 0
         self.max_rot = 0
         self.dead_reckoning = None
         self.pose_display_interval = IntervalCheck(interval=0.2)
         self.pose_update_interval = IntervalCheck(interval=0.1)
-
-    def _set_absolute_motion(self, context):
-        """
-        Lock motion to be compass relative, zero point (forwards) is the current bearing
-        """
-        context.lcd.set_backlight(0, 10, 0)
-        context.lcd.set_text(row1='Manual Control', row2='Absolute Motion')
-        self.bearing_zero = self.last_bearing
-
-    def _set_relative_motion(self, context):
-        """
-        Set motion to be relative to the robot's reference frame
-        """
-        context.lcd.set_backlight(10, 0, 0)
-        context.lcd.set_text(row1='Manual Control', row2='Relative Motion')
-        self.bearing_zero = None
 
     def init_task(self, context):
         # Maximum translation speed in mm/s
@@ -47,10 +30,25 @@ class ManualMotionTask(Task):
         self._set_relative_motion(context)
         self.dead_reckoning = DeadReckoning(chassis=context.chassis, counts_per_revolution=3310)
 
-    def poll_task(self, context, tick):
-        if context.bearing is not None:
-            self.last_bearing = context.bearing
+    def _set_absolute_motion(self, context):
+        """
+        Lock motion to be compass relative, zero point (forwards) is the current bearing
+        """
+        context.lcd.set_backlight(3, 10, 0)
+        context.lcd.set_text(row1='Manual Control', row2='Absolute Motion')
+        self.bearing_zero = self.dead_reckoning.pose.orientation
 
+    def _set_relative_motion(self, context):
+        """
+        Set motion to be relative to the robot's reference frame
+        """
+        context.lcd.set_backlight(10, 3, 9)
+        context.lcd.set_text(row1='Manual Control', row2='Relative Motion')
+        self.bearing_zero = None
+
+    def poll_task(self, context, tick):
+
+        # Check joystick buttons to see if we need to change mode or reset anything
         if context.button_pressed(SixAxis.BUTTON_TRIANGLE):
             self._set_relative_motion(context)
         elif context.button_pressed(SixAxis.BUTTON_SQUARE):
@@ -71,14 +69,16 @@ class ManualMotionTask(Task):
         # Get a vector from the left hand analogue stick and scale it up to our
         # maximum translation speed, this will mean we go as fast directly forward
         # as possible when the stick is pushed fully forwards
+
         translate = Vector2(
             context.joystick.axes[0].corrected_value(),
             context.joystick.axes[1].corrected_value()) * self.max_trn
+        ':type : euclid.Vector2'
 
         # If we're in absolute mode, rotate the translation vector appropriately
         if self.bearing_zero is not None:
             translate = rotate_vector(translate,
-                                      self.last_bearing - self.bearing_zero)
+                                      self.dead_reckoning.pose.orientation - self.bearing_zero)
 
         # Get the rotation in radians per second from the right hand stick's X axis,
         # scaling it to our maximum rotational speed. When standing still this means
