@@ -59,7 +59,7 @@ class ManualMotionTask(Task):
 
         # Check to see whether the minimum interval between dead reckoning updates has passed
         now = time()
-        if now - self.last_time < 0.2:
+        if now - self.last_time > 0.2:
             # Get the encoder counts and update the dead reckoning logic
             pose = self.dead_reckoning.update_from_counts(context.arduino.get_encoder_values())
             context.lcd.set_text(row1='x: {:5.0f} y: {:5.0f}'.format(pose.position.x, pose.position.y),
