@@ -5,7 +5,6 @@ Triangula top level service script
 
 from signal import signal, SIGINT, SIGTERM
 from sys import exit
-from time import sleep
 
 from triangula.arduino import Arduino
 from triangula.chassis import get_regular_triangular_chassis
@@ -27,9 +26,7 @@ def get_shutdown_handler(message=None):
         arduino.set_motor_power(0, 0, 0)
         arduino.set_lights(0, 0, 40)
         lcd.set_backlight(red=5, green=5, blue=5)
-        sleep(0.05)
         lcd.set_text(row1='Service shutdown', row2=message)
-        sleep(0.05)
         exit(0)
 
     return handler

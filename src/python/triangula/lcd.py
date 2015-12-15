@@ -1,6 +1,13 @@
 __author__ = 'tom'
 
+from time import time, sleep
+
 import serial
+
+"""
+This is the minimum delay between instructions to the LCD in seconds.
+"""
+MIN_DELAY = 0.05
 
 
 class LCD():
@@ -19,6 +26,7 @@ class LCD():
         self.row1 = ''
         self.row2 = ''
         self.clear()
+        self.last_time = time()
 
     def set_text(self, row1=None, row2=None):
         """
@@ -49,6 +57,7 @@ class LCD():
         :param blue:
             Blue value, int 0 to 10
         """
+        self._delay_if_needed()
         if red > 10:
             red = 10
         elif red < 0:
@@ -67,24 +76,28 @@ class LCD():
         """
         Clear the display
         """
+        self._delay_if_needed()
         self._send('pc1')
 
     def cursor_off(self):
         """
         Disable the cursor
         """
+        self._delay_if_needed()
         self._send('pc12')
 
     def cursor_blink(self):
         """
         Set the cursor to a flashing block
         """
+        self._delay_if_needed()
         self._send('pc15')
 
     def cursor_on(self):
         """
         Set the cursor to a normal underscore character
         """
+        self._delay_if_needed()
         self._send('pc14')
 
     def _update(self):
@@ -93,9 +106,10 @@ class LCD():
 
         :internal:
         """
+        self._delay_if_needed()
         self._send('pc2')
         padded_row1 = self.row1 + ' ' * (40 - len(self.row1))
-	padded_row2 = self.row2 + ' ' * (16 - len(self.row2))
+        padded_row2 = self.row2 + ' ' * (16 - len(self.row2))
         self._send('pd' + self.row1.ljust(40) + self.row2.ljust(16))
 
     def _send(self, command):
@@ -109,3 +123,10 @@ class LCD():
         """
         self.ser.write(command)
         self.ser.write([0xd])
+
+    def _delay_if_needed(self):
+        now = time()
+        if self.last_time is not None:
+            if now - self.last_time < MIN_DELAY:
+                sleep(MIN_DELAY - (now - self.last_time))
+        self.last_time = now

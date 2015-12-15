@@ -322,7 +322,7 @@ class Pose:
             vector=Vector2(to_pose.position.x - self.position.x, to_pose.position.y - self.position.y),
             angle=-self.orientation)
 
-    def calculate_pose_change(self, motion, time):
+    def calculate_pose_change(self, motion, time_delta):
         """
         Given this as the starting Pose, a Motion and a time in seconds, calculate the resultant Pose at the end of the
         time interval.
@@ -336,8 +336,8 @@ class Pose:
             The motion of the robot, assumed to be constant for the duration of the time interval. The motion is
             expressed in the robot's coordinate frame, so a translation of (0,1) is always a forward motion,
             irrespective of the current orientation.
-        :param float time:
-            The time in seconds
+        :param float time_delta:
+            The time in seconds during which the specified motion should be applied.
         :return:
             A :class:`triangula.chassis.Pose` which represents resultant pose after applying the supplied motion for the
             given time.
@@ -345,7 +345,7 @@ class Pose:
         if motion.rotation != 0:
             # Trivially, the final orientation is the starting orientation plus the rotation in radians per second
             # multiplied by the time in seconds.
-            final_orientation = self.orientation + motion.rotation * time
+            final_orientation = self.orientation + motion.rotation * time_delta
             # We've moved motion.rotation/2PI revolutions, and a revolution is 2PI*r, so we've moved motion.rotation*r,
             # so r is abs(translation)/motion.rotation, meaning our centre point is at normalise(translation).cross() *
             # abs(translation) / motion.rotation, i.e. translation.cross() / motion.rotation

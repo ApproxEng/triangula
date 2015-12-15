@@ -1,7 +1,7 @@
-import time
+from math import degrees
 
-from euclid import Vector2, Point2
-from triangula.chassis import rotate_vector, Motion, Pose
+from euclid import Vector2
+from triangula.chassis import rotate_vector, Motion, DeadReckoning
 from triangula.input import SixAxis
 from triangula.task import Task
 
@@ -18,38 +18,23 @@ class ManualMotionTask(Task):
         self.last_bearing = 0
         self.max_trn = 0
         self.max_rot = 0
-        self.pose = None
-        self.encoder_values = None
-        self.last_encoder_time = None
+        self.dead_reckoning = None
 
     def _set_absolute_motion(self, context):
         """
         Lock motion to be compass relative, zero point (forwards) is the current bearing
         """
-        time.sleep(0.05)
         context.lcd.set_backlight(0, 10, 0)
-        time.sleep(0.05)
         context.lcd.set_text(row1='Manual Control', row2='Absolute Motion')
-        time.sleep(0.05)
         self.bearing_zero = self.last_bearing
 
     def _set_relative_motion(self, context):
         """
         Set motion to be relative to the robot's reference frame
         """
-        time.sleep(0.05)
         context.lcd.set_backlight(10, 0, 0)
-        time.sleep(0.05)
         context.lcd.set_text(row1='Manual Control', row2='Relative Motion')
-        time.sleep(0.05)
         self.bearing_zero = None
-
-    def _reset_pose(self):
-        """
-        Reset the world coordinate space to the current robot coordinate space by re-initialising the Pose object to
-        0,0 with 0 orientation.
-        """
-        self.pose = Pose(Point2(0, 0), 0)
 
     def init_task(self, context):
         # Maximum translation speed in mm/s
@@ -57,9 +42,7 @@ class ManualMotionTask(Task):
         # Maximum rotation speed in radians/2
         self.max_rot = context.chassis.get_max_rotation_speed()
         self._set_relative_motion(context)
-        self._reset_pose()
-        self.encoder_values = context.arduino.get_encoder_values()
-        self.last_encoder_time = time.time()
+        self.dead_reckoning = DeadReckoning(chassis=context.chassis)
 
     def poll_task(self, context, tick):
         if context.bearing is not None:
@@ -70,7 +53,14 @@ class ManualMotionTask(Task):
         elif context.button_pressed(SixAxis.BUTTON_SQUARE):
             self._set_absolute_motion(context)
         elif context.button_pressed(SixAxis.BUTTON_CIRCLE):
-            self._reset_pose()
+            self.dead_reckoning.reset()
+        elif context.button_pressed(SixAxis.BUTTON_CROSS):
+            pose = self.dead_reckoning.pose
+            context.lcd.set_text(row1='x: {0:05d} y: {0:05d}'.format(pose.position.x, pose.position.y),
+                                 row2='r: {0:03d}'.format(degrees(pose.orientation)))
+
+        # Get the encoder counts and update the dead reckoning logic
+        self.dead_reckoning.update_from_counts(context.arduino.get_encoder_values())
 
         # Get a vector from the left hand analogue stick and scale it up to our
         # maximum translation speed, this will mean we go as fast directly forward
