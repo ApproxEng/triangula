@@ -56,7 +56,7 @@ class ManualMotionTask(Task):
             self.dead_reckoning.reset()
         elif context.button_pressed(SixAxis.BUTTON_CROSS):
             pose = self.dead_reckoning.pose
-            context.lcd.set_text(row1='x: {0:05d} y: {0:05d}'.format(pose.position.x, pose.position.y),
+            context.lcd.set_text(row1='x: {:5.0f} y: {:5.0f}'.format(pose.position.x, pose.position.y),
                                  row2='r: {0:03d}'.format(degrees(pose.orientation)))
 
         # Get the encoder counts and update the dead reckoning logic
