@@ -1,5 +1,5 @@
 import serial
-from triangula.util import IntervalCheck
+from triangula.util import IntervalCheck, in_range
 
 """
 This is the minimum delay between instructions to the LCD in seconds.
@@ -54,49 +54,40 @@ class LCD:
         :param blue:
             Blue value, int 0 to 10
         """
-        self.interval.sleep()
-        if red > 10:
-            red = 10
-        elif red < 0:
-            red = 0
-        if green > 10:
-            green = 10
-        elif green < 0:
-            green = 0
-        if blue > 10:
-            blue = 10
-        elif blue < 0:
-            blue = 0
-        self._send('pb' + str(red) + ',' + str(green) + ',' + str(blue))
-        self.interval.sleep()
+        with self.interval:
+            self._send(
+                'pb' +
+                str(in_range(red, 0, 10)) + ',' +
+                str(in_range(green, 0, 10)) + ',' +
+                str(in_range(blue, 0, 10)))
 
     def clear(self):
         """
         Clear the display
         """
-        self.interval.sleep()
-        self._send('pc1')
+        with self.interval:
+            self._send('pc1')
 
     def cursor_off(self):
         """
         Disable the cursor
         """
-        self.interval.sleep()
-        self._send('pc12')
+        with self.interval:
+            self._send('pc12')
 
     def cursor_blink(self):
         """
         Set the cursor to a flashing block
         """
-        self.interval.sleep()
-        self._send('pc15')
+        with self.interval:
+            self._send('pc15')
 
     def cursor_on(self):
         """
         Set the cursor to a normal underscore character
         """
-        self.interval.sleep()
-        self._send('pc14')
+        with self.interval:
+            self._send('pc14')
 
     def _update(self):
         """
@@ -104,9 +95,9 @@ class LCD:
 
         :internal:
         """
-        self.interval.sleep()
-        self._send('pc2')
-        self._send('pd' + self.row1.ljust(40) + self.row2.ljust(16))
+        with self.interval:
+            self._send('pc2')
+            self._send('pd' + self.row1.ljust(40) + self.row2.ljust(16))
 
     def _send(self, command):
         """
