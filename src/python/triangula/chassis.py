@@ -204,7 +204,7 @@ class DeadReckoning:
     resolutions, chassis geometry etc. Some manual tuning may be required.
     """
 
-    def __init__(self, chassis, counts_per_revolution=64 * 19, max_count_value=1 << 16):
+    def __init__(self, chassis, counts_per_revolution=64 * 19, max_count_value=1 << 15):
         """
         Constructor
 
@@ -275,6 +275,8 @@ class DeadReckoning:
             self.pose = Pose(Point2(0, 0), 0)
         else:
             time_delta = reading_time - self.last_reading_time
+            (count_a, count_b, count_c) = counts
+            print 'counts a={}, b={}, c={}'.format(count_a, count_b, count_c)
             wheel_speeds = [smallest_difference(last_reading, current_reading, self.max_count_value) / (
                 self.counts_per_revolution * time_delta) for last_reading, current_reading
                             in zip(counts, self.last_encoder_values)]
