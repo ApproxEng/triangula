@@ -1,5 +1,3 @@
-from time import time
-
 import serial
 from triangula.util import IntervalCheck
 
@@ -24,9 +22,8 @@ class LCD:
         self.ser = serial.Serial(port='/dev/ttyAMA0', baudrate=9600)
         self.row1 = ''
         self.row2 = ''
-        self.last_time = time()
-        self.clear()
         self.interval = IntervalCheck(interval=MIN_DELAY)
+        self.clear()
 
     def set_text(self, row1=None, row2=None):
         """
