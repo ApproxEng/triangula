@@ -63,8 +63,11 @@ class ManualMotionTask(Task):
         # Update the display if appropriate
         if self.pose_display_interval.should_run():
             pose = self.dead_reckoning.pose
+            mode_string = 'ABS'
+            if self.bearing_zero is None:
+                mode_string = 'REL'
             context.lcd.set_text(row1='x:{:7.0f}, b:{:3.0f}'.format(pose.position.x, degrees(pose.orientation)),
-                                 row2='y:{:7.0f}'.format(pose.position.y))
+                                 row2='y:{:7.0f}, {}'.format(pose.position.y, mode_string))
 
         # Get a vector from the left hand analogue stick and scale it up to our
         # maximum translation speed, this will mean we go as fast directly forward
