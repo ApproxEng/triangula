@@ -22,11 +22,13 @@ extensions = [
     'sphinx.ext.autosummary',
     'sphinx.ext.intersphinx',
     'sphinx.ext.graphviz',
-    'sphinx.ext.mathjax'
+    'sphinx.ext.mathjax',
+    'sphinxcontrib.youtube'
 ]
 
-# Configure graphviz to generate SVG and set up some default colours and graph styling
-graphviz_output_format = 'svg'
+# Configure graphviz to generate PNG and set up some default colours and graph styling. We were using SVGs here, but
+# it seems that pythonhosted.org isn't setting their MIME type correctly and is therefore failing to display.
+graphviz_output_format = 'png'
 graphviz_dark_colour = '#343131'
 graphviz_background_colour = 'linen'
 graphviz_dot_args = ['-Gbgcolor=transparent', '-Nshape=rectangle', '-Nfontname=courier', '-Nfontsize=12', '-Nheight=0',
@@ -125,7 +127,7 @@ intersphinx_mapping = {'python': ('https://docs.python.org/2.7', None)}
 # Add any extra paths that contain custom files (such as robots.txt or
 # .htaccess) here, relative to this directory. These files are copied
 # directly to the root of the documentation.
-# html_extra_path = []
+html_extra_path = ['_html_extra/.htaccess']
 
 # If not '', a 'Last updated on:' timestamp is inserted at every page bottom,
 # using the given strftime format.
