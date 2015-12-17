@@ -2,7 +2,10 @@ __author__ = 'tom'
 
 from time import sleep
 
-import smbus
+try:
+    import smbus
+except ImportError:
+    print 'Not importing smbus, expected during sphinx generation on OSX'
 
 ARDUINO_ADDRESS = 0x70
 
@@ -41,6 +44,27 @@ def check_byte(b):
     return i
 
 
+def compute_checksum(register, data):
+    """
+    Calculate a checksum for the specified data and register, simply by XORing each byte in turn with the current value
+    of the checksum. The value is initialised to be the register, then each byte of the data array is used in turn. This
+    is intended to inter-operate with the code on the Arduino, it's not a particularly generic checksum routine and
+    won't work with arbitrary I2C devices.
+
+    :param int register:
+        The register to which we're sending the data. This is used because the first part of the data transaction
+        is actually the register, we want to calculate the checksum including the register part.
+    :param int[] data:
+        The data array to use
+    :return:
+        A checksum, this should be appended onto the data sent to the Arduino
+    """
+    xor = register
+    for data_byte in data:
+        xor ^= data_byte
+    return xor
+
+
 class Arduino:
     """
     Handles communication over I2C with the Arduino, exposing methods which can be used to
@@ -54,8 +78,11 @@ class Arduino:
     """
 
     DEVICE_MOTORS_SET = 0x20
+    'Register used to set motor power'
     DEVICE_LIGHTS_SET = 0x21
+    'Register used to set the lights to a constant colour'
     DEVICE_ENCODERS_READ = 0x22
+    'Register used to copy the current encoder values into the read buffer on the Arduino'
 
     def __init__(self,
                  arduino_address=ARDUINO_ADDRESS,
@@ -83,19 +110,13 @@ class Arduino:
         self._max_retries = max_retries
         self._address = arduino_address
 
-    def _compute_checksum(self, register, data):
-        xor = register
-        for data_byte in data:
-            xor ^= data_byte
-        return xor
-
     def _send(self, register, data):
         retries_left = self._max_retries
         while retries_left > 0:
             try:
                 data_with_checksum = []
                 data_with_checksum.extend(data)
-                data_with_checksum.append(self._compute_checksum(register, data))
+                data_with_checksum.append(compute_checksum(register, data))
                 self._bus.write_i2c_block_data(self._address, register, data_with_checksum)
                 return
             except IOError:
@@ -124,7 +145,7 @@ class Arduino:
                 # Prod the appropriate control register
                 self._send(register, [0])
                 # Delay for an arbitrary amount of time
-                sleep(self._i2c_delay*10)
+                sleep(self._i2c_delay * 10)
                 # Call read_byte repeatedly to assemble our output data
                 data = [self._bus.read_byte(self._address) for _ in xrange(bytes_to_read)]
                 return data
