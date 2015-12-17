@@ -15,6 +15,29 @@ Contents:
     api/*
 
 
+
+Just to show we can do graphs and maths
+---------------------------------------
+
+.. graphviz::
+
+    digraph G {
+        a->b->c;
+        b->d;
+        a [fillcolor=pink,style=filled];
+        c [label="hello world"]
+        d [];
+        e [];
+    }
+
+Some inline maths, for example :math:`a^2 + b^2 = c^2` or :math:`\sum_{i=1}^{10} t_i`
+
+.. math:: e^{i\pi} + 1 = 0
+    :label: euler
+
+Euler's identity, equation :eq:`euler`, was elected one of the most
+beautiful mathematical formulas.
+
 Indices and tables
 ==================
 
