@@ -24,5 +24,42 @@ that all it allows you to do is send and receive bytes of data from devices conn
 friendly the :class:`triangula.arduino.Arduino` class exists, wrapping up the low level calls to the ``smbus`` library,
 and thence to the Arduino, into things that look more like sensible Python function calls.
 
+Python Code
+-----------
+
+This code runs on the Pi and sends messages to the Arduino over I2C
+
 .. automodule:: triangula.arduino
     :members:
+
+Arduino Code
+------------
+
+This code runs on the Arduino and receives messages from the Pi over I2C
+
+Triangula_Main.ino
+__________________
+
+The main code running on the Arduino. This is responsible for monitoring the wheel encoders, sending power values to the
+Syren10 motor drivers, and for setting colours on the attached LEDs.
+
+.. literalinclude:: ../../arduino/Triangula_Main/Triangula_Main.ino
+   :language: c
+   :linenos:
+
+Triangula_NeoPixel.h
+____________________
+
+A simple extension to the AdaFruit NeoPixel library to handle colours in HSV space rather than RGB, and to manage a
+slightly higher-level view on the neopixel strips.
+
+.. literalinclude:: ../../arduino/Triangula_Main/Triangula_NeoPixel.h
+   :language: c
+   :linenos:
+
+Triangula_NeoPixel.cpp
+______________________
+
+.. literalinclude:: ../../arduino/Triangula_Main/Triangula_NeoPixel.cpp
+   :language: c
+   :linenos:
