@@ -37,29 +37,26 @@ Arduino Code
 
 This code runs on the Arduino and receives messages from the Pi over I2C
 
-Triangula_Main.ino
-__________________
-
 The main code running on the Arduino. This is responsible for monitoring the wheel encoders, sending power values to the
 Syren10 motor drivers, and for setting colours on the attached LEDs.
 
 .. literalinclude:: ../../arduino/Triangula_Main/Triangula_Main.ino
-   :language: c
-   :linenos:
+    :caption: Triangula_Main.ino
+    :language: c
+    :linenos:
 
-Triangula_NeoPixel.h
-____________________
+Triangula_NeoPixel
+__________________
 
 A simple extension to the AdaFruit NeoPixel library to handle colours in HSV space rather than RGB, and to manage a
 slightly higher-level view on the neopixel strips.
 
 .. literalinclude:: ../../arduino/Triangula_Main/Triangula_NeoPixel.h
-   :language: c
-   :linenos:
-
-Triangula_NeoPixel.cpp
-______________________
+    :caption: Triangula_NeoPixel.h
+    :language: c
+    :linenos:
 
 .. literalinclude:: ../../arduino/Triangula_Main/Triangula_NeoPixel.cpp
-   :language: c
-   :linenos:
+    :caption: Triangula_NeoPixel.cpp
+    :language: c
+    :linenos:
