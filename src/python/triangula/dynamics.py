@@ -6,7 +6,12 @@ from triangula.chassis import Motion
 class MotionLimit:
     """
     Utility class to limit rate of motion changes, similar to the :class:`triangula.dynamics.RateLimit` but specialised
-    to limit rate of change of :class:`triangula.chassis.Motion` instances.
+    to limit rate of change of :class:`triangula.chassis.Motion` instances. It computes the necessary linear and angular
+    acceleration required to transition from the previously registered Motion to the new one, and scales between the two
+    Motions such that the limits aren't exceeded. Linear interpolation is used to map between the previous and new
+    motions. This works around the drawback with the :class:`triangula.dynamics.RateLimit` when applied to wheel speeds
+    where the resultant motion will incorporate a degree of rotation even when no rotations are included in either
+    motion.
     """
 
     def __init__(self, linear_acceleration_limit, angular_acceleration_limit):
@@ -14,7 +19,7 @@ class MotionLimit:
         Create a new instance configured with the specified limits.
         :param float linear_acceleration_limit:
             Maximum allowed linear acceleration in mm per second per second
-        :param radial_acceleration_limit:
+        :param angular_acceleration_limit:
             Maximum allowed radial acceleration in radians per second per second
         """
         self.linear_acceleration_limit = linear_acceleration_limit
