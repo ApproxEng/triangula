@@ -37,7 +37,7 @@ class RateLimit:
         if self.previous_time is None:
             self.previous_time = now
             self.previous_values = values
-            return
+            return values
         updated_values = [self.limit_function(previous_value, self.previous_time, value, now) for
                           (previous_value, value) in
                           zip(self.previous_values, values)]
