@@ -1,5 +1,60 @@
 from time import time as time_now
 
+from triangula.chassis import Motion
+
+
+class MotionLimit:
+    """
+    Utility class to limit rate of motion changes, similar to the :class:`triangula.dynamics.RateLimit` but specialised
+    to limit rate of change of :class:`triangula.chassis.Motion` instances.
+    """
+
+    def __init__(self, linear_acceleration_limit, angular_acceleration_limit):
+        """
+        Create a new instance configured with the specified limits.
+        :param float linear_acceleration_limit:
+            Maximum allowed linear acceleration in mm per second per second
+        :param radial_acceleration_limit:
+            Maximum allowed radial acceleration in radians per second per second
+        """
+        self.linear_acceleration_limit = linear_acceleration_limit
+        self.angular_acceleration_limit = angular_acceleration_limit
+        self.last_motion = None
+        self.last_motion_time = None
+
+    def limit_and_return(self, motion):
+        """
+        Apply limits to the requested motion based on the current state of the MotionLimit, returning the closest Motion
+        which complies with the specified limits.
+
+        :param triangula.chassis.Motion motion:
+            The requested :class:`triangula.chassis.Motion`,
+        :return:
+            The modified motion, or the supplied one if it complied with the limits
+        """
+        now = time_now()
+        if self.last_motion is None:
+            self.last_motion = motion
+            self.last_motion_time = now
+            return motion
+        # Calculate the requested linear acceleration magnitude in mm/s/s to achieve the desired motion change
+        time_delta = now - self.last_motion_time
+        motion_delta = abs(motion.translation - self.last_motion.translation)
+        linear_acceleration = motion_delta / time_delta
+        angular_acceleration = abs(motion.rotation - self.last_motion.rotation) / time_delta
+        scaling = 1.0
+        if linear_acceleration > self.linear_acceleration_limit:
+            scaling = self.linear_acceleration_limit / linear_acceleration
+        if angular_acceleration > self.angular_acceleration_limit:
+            scaling = min(scaling, self.angular_acceleration_limit / angular_acceleration)
+        scaled_translation = motion.translation * scaling + self.last_motion.translation * (1.0 - scaling)
+        ':type : euclid.Vector2'
+        scaled_rotation = motion.rotation * scaling + self.last_motion.rotation * (1.0 - scaling)
+        scaled_motion = Motion(rotation=scaled_rotation, translation=scaled_translation)
+        self.last_motion = scaled_motion
+        self.last_motion_time = now
+        return scaled_motion
+
 
 class RateLimit:
     """

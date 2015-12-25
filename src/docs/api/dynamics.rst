@@ -4,8 +4,8 @@ triangula.dynamics: High Level Dynamics
 This package contains classes used to enforce higher level dynamics such as skid control, waypoint based navigation,
 route planning and similar.
 
-Acceleration limiting
----------------------
+Per-Wheel Acceleration Limiting
+-------------------------------
 
 The :class:`triangula.dynamics.RateLimit` class is a general rate limiter. Constructed with a limit function, it is
 called repeatedly, passed a list of new values. It enforces any supplied limits on the allowable rates of change of
@@ -19,4 +19,14 @@ rate per second limiting, but other functions could be passed in to provide smar
 reduction in the absolute value but limiting increases in magnitude.
 
 .. autoclass:: triangula.dynamics.RateLimit
+    :members:
+
+Motion Limiting
+---------------
+
+The :class:`triangula.dynamics.MotionLimit` class is an acceleration limiter specialised to handle rate limitation over
+instances of :class:`triangula.chassis.Motion`. It is configured with maximum allowed linear and angular accelerations,
+configured in millimeters per second per second, and radians per second per second respectively.
+
+.. autoclass:: triangula.dynamics.MotionLimit
     :members:
