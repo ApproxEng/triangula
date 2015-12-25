@@ -2,6 +2,7 @@ from math import degrees
 
 from euclid import Vector2
 from triangula.chassis import rotate_vector, Motion, DeadReckoning
+from triangula.dynamics import RateLimit
 from triangula.input import SixAxis
 from triangula.task import Task
 from triangula.util import IntervalCheck
@@ -22,6 +23,7 @@ class ManualMotionTask(Task):
         self.dead_reckoning = None
         self.pose_display_interval = IntervalCheck(interval=0.2)
         self.pose_update_interval = IntervalCheck(interval=0.1)
+        self.rate_limit = None
 
     def init_task(self, context):
         # Maximum translation speed in mm/s
@@ -36,7 +38,6 @@ class ManualMotionTask(Task):
         Lock motion to be compass relative, zero point (forwards) is the current bearing
         """
         context.lcd.set_backlight(3, 10, 0)
-        context.lcd.set_text(row1='Manual Control', row2='Absolute Motion')
         self.bearing_zero = self.dead_reckoning.pose.orientation
 
     def _set_relative_motion(self, context):
@@ -44,7 +45,6 @@ class ManualMotionTask(Task):
         Set motion to be relative to the robot's reference frame
         """
         context.lcd.set_backlight(10, 3, 9)
-        context.lcd.set_text(row1='Manual Control', row2='Relative Motion')
         self.bearing_zero = None
 
     def poll_task(self, context, tick):
@@ -56,6 +56,11 @@ class ManualMotionTask(Task):
             self._set_absolute_motion(context)
         elif context.button_pressed(SixAxis.BUTTON_CIRCLE):
             self.dead_reckoning.reset()
+        elif context.button_pressed(SixAxis.BUTTON_CROSS):
+            if self.rate_limit is None:
+                self.rate_limit = RateLimit(limit_function=RateLimit.fixed_rate_limit_function(1))
+            else:
+                self.rate_limit = None
 
         # Check to see whether the minimum interval between dead reckoning updates has passed
         if self.pose_update_interval.should_run():
@@ -67,6 +72,8 @@ class ManualMotionTask(Task):
             mode_string = 'ABS'
             if self.bearing_zero is None:
                 mode_string = 'REL'
+            if self.rate_limit is not None:
+                mode_string += '*'
             context.lcd.set_text(row1='x:{:7.0f}, b:{:3.0f}'.format(pose.position.x, degrees(pose.orientation)),
                                  row2='y:{:7.0f}, {}'.format(pose.position.y, mode_string))
 
@@ -75,8 +82,8 @@ class ManualMotionTask(Task):
         # as possible when the stick is pushed fully forwards
 
         translate = Vector2(
-            context.joystick.axes[0].corrected_value(),
-            context.joystick.axes[1].corrected_value()) * self.max_trn
+                context.joystick.axes[0].corrected_value(),
+                context.joystick.axes[1].corrected_value()) * self.max_trn
         ':type : euclid.Vector2'
 
         # If we're in absolute mode, rotate the translation vector appropriately
@@ -104,4 +111,6 @@ class ManualMotionTask(Task):
         # line as well as lighting up a neopixel ring to provide additional feedback
         # and bling.
         power = [speeds[i] / context.chassis.wheels[i].max_speed for i in range(0, 3)]
+        if self.rate_limit is not None:
+            power = self.rate_limit.limit_and_return(power)
         context.arduino.set_motor_power(power[0], power[1], power[2])
