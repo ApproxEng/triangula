@@ -17,6 +17,7 @@ class MotionLimit:
     def __init__(self, linear_acceleration_limit, angular_acceleration_limit):
         """
         Create a new instance configured with the specified limits.
+
         :param float linear_acceleration_limit:
             Maximum allowed linear acceleration in mm per second per second
         :param angular_acceleration_limit:

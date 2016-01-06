@@ -32,16 +32,26 @@ need to modify some of the git commands below if you haven't. You can set up pub
 https://help.github.com/articles/generating-ssh-keys/#platform-all
 
 Note 2 - this is also assuming you're starting from a clean installation of the latest Jessie based Raspbian. Other
-distributions may need varying combinations of dev libraries etc.
+distributions may need varying combinations of dev libraries etc. For testing I was using the minimal installation with
+filename ``2015-11-21-raspbian-jessie-lite.zip`` but these instructions should apply to any recent version. As always,
+it's not a bad idea to run ``sudo apt-get update`` and ``sudo apt-get upgrade`` to get any changes to packages since
+your distribution was built.
 
-You'll need to install some packages on your Pi first:
+You'll need to install some packages on your Pi first, and enable the bluetooth services:
 
 .. code-block:: bash
 
-  > sudo apt-get install bluetooth libusb-dev
+  pi@raspberrypi ~ $ sudo apt-get install bluetooth libbluetooth3 libusb-dev
+  pi@raspberrypi ~ $ sudo systemctl enable bluetooth.service
 
-After installing the bluetooth libraries package you will need to reboot, this starts all the corresponding system
-services. If you don't reboot, the next steps will not work!
+You also need to add the default user to the ``bluetooth`` group:
+
+.. code-block:: bash
+
+  pi@raspberrypi ~ $ sudo usermod -G bluetooth -a pi
+
+You must now **power cycle** your Pi. Do not just reboot, actually shut down, pull the power, wait a few seconds and
+reconnect. This may be overkill, but it's been the best way I've found to consistently have the next steps succeed.
 
 Pairing
 -------
@@ -67,7 +77,10 @@ the process won't work at all. The 'sixpair' command, run as root, updates the c
 You should see a message indicating that the bluetooth master address on the controller has been changed (you can
 specify the address to which it should change, the default with no arguments is to use the first installed bluetooth
 adapter, which is what you want unless for some reason you've got more than one plugged in). The controller will now
-attempt to connect to your bluetooth dongle when you press the PS button (don't do this just yet, it won't work)
+attempt to connect to your bluetooth dongle when you press the PS button (don't do this just yet, it won't work). The
+example above shows that no change has been made, as this particular controller had been paired with the dongle before,
+but you should see two different addresses - the first is the address the controller was trusting, the second is the one
+it now trusts.
 
 Next we need to configure the bluetooth software on the Pi to accept connections from the controller.
 
