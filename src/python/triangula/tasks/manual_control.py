@@ -2,7 +2,7 @@ from math import degrees
 
 from euclid import Vector2
 from triangula.chassis import rotate_vector, Motion, DeadReckoning
-from triangula.dynamics import RateLimit
+from triangula.dynamics import RateLimit, MotionLimit
 from triangula.input import SixAxis
 from triangula.task import Task
 from triangula.util import IntervalCheck
@@ -15,6 +15,9 @@ class ManualMotionTask(Task):
     dead-reckoning logic is surprisingly accurate and stable.
     """
 
+    ACCEL_TIME = 1.0
+    'Time to reach full speed from a standing start'
+
     def __init__(self):
         super(ManualMotionTask, self).__init__(task_name='Manual motion', requires_compass=False)
         self.bearing_zero = None
@@ -24,6 +27,10 @@ class ManualMotionTask(Task):
         self.pose_display_interval = IntervalCheck(interval=0.2)
         self.pose_update_interval = IntervalCheck(interval=0.1)
         self.rate_limit = None
+        ':type : triangula.dynamics.RateLimit'
+        self.motion_limit = None
+        ':type : triangula.dynamics.MotionLimit'
+        self.limit_mode = 0
 
     def init_task(self, context):
         # Maximum translation speed in mm/s
@@ -32,6 +39,11 @@ class ManualMotionTask(Task):
         self.max_rot = context.chassis.get_max_rotation_speed()
         self._set_relative_motion(context)
         self.dead_reckoning = DeadReckoning(chassis=context.chassis, counts_per_revolution=3310)
+        self.motion_limit = MotionLimit(
+                linear_acceleration_limit=context.chassis.get_max_translation_speed / ManualMotionTask.ACCEL_TIME,
+                angular_acceleration_limit=context.chassis.get_max_rotation_speed / ManualMotionTask.ACCEL_TIME)
+        self.rate_limit = RateLimit(limit_function=RateLimit.fixed_rate_limit_function(1 / ManualMotionTask.ACCEL_TIME))
+        self.limit_mode = 0
 
     def _set_absolute_motion(self, context):
         """
@@ -57,10 +69,7 @@ class ManualMotionTask(Task):
         elif context.button_pressed(SixAxis.BUTTON_CIRCLE):
             self.dead_reckoning.reset()
         elif context.button_pressed(SixAxis.BUTTON_CROSS):
-            if self.rate_limit is None:
-                self.rate_limit = RateLimit(limit_function=RateLimit.fixed_rate_limit_function(1))
-            else:
-                self.rate_limit = None
+            self.limit_mode = (self.limit_mode + 1) % 3
 
         # Check to see whether the minimum interval between dead reckoning updates has passed
         if self.pose_update_interval.should_run():
@@ -72,8 +81,10 @@ class ManualMotionTask(Task):
             mode_string = 'ABS'
             if self.bearing_zero is None:
                 mode_string = 'REL'
-            if self.rate_limit is not None:
+            if self.limit_mode == 1:
                 mode_string += '*'
+            elif self.limit_mode == 2:
+                mode_string += '+'
             context.lcd.set_text(row1='x:{:7.0f}, b:{:3.0f}'.format(pose.position.x, degrees(pose.orientation)),
                                  row2='y:{:7.0f}, {}'.format(pose.position.y, mode_string))
 
@@ -103,7 +114,10 @@ class ManualMotionTask(Task):
         # This is a :class:`triangula.chassis.WheelSpeeds` containing the speeds and any
         # scaling applied to bring the requested velocity within the range the chassis can
         # actually perform.
-        wheel_speeds = context.chassis.get_wheel_speeds(motion=Motion(translation=translate, rotation=rotate))
+        motion = Motion(translation=translate, rotation=rotate)
+        if self.limit_mode == 2:
+            motion = self.motion_limit.limit_and_return(motion)
+        wheel_speeds = context.chassis.get_wheel_speeds(motion=motion)
         speeds = wheel_speeds.speeds
 
         # Send desired motor speed values over the I2C bus to the Arduino, which will
@@ -111,6 +125,6 @@ class ManualMotionTask(Task):
         # line as well as lighting up a neopixel ring to provide additional feedback
         # and bling.
         power = [speeds[i] / context.chassis.wheels[i].max_speed for i in range(0, 3)]
-        if self.rate_limit is not None:
+        if self.limit_mode == 1:
             power = self.rate_limit.limit_and_return(power)
         context.arduino.set_motor_power(power[0], power[1], power[2])

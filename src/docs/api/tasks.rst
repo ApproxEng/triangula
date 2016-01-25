@@ -25,6 +25,17 @@ bearing from the dead reckoning algorithm.
 .. autoclass:: triangula.tasks.manual_control.ManualMotionTask
     :members:
 
+triangula.tasks.patrol: Patrol
+------------------------------
+
+Initialised with a sequence of :class:`triangula.navigation.TaskWaypoint` instances, this task will drive to each
+waypoint in sequence, optionally coming to a complete stop at the waypoint before running a sub-task until that task
+returns an :class:`triangula.task.ExitTask` at which point it proceeds to the next waypoint. The route can optionally
+loop to run continuously.
+
+.. autoclass:: triangula.task.patrol.PatrolTask
+    :members:
+
 triangula.tasks.network_info: Network Info
 ------------------------------------------
 

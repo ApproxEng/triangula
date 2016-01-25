@@ -24,6 +24,16 @@ This guide assumes you're using a Raspberry Pi (I'm using a Pi 2, but there's no
 ones). You'll also need a USB bluetooth dongle and, obviously, a SixAxis controller. I've only tried this with genuine
 Sony ones, many of the cheaper ones you'll find online are clones, they should work but YMMV.
 
+Bluetooth dongles
+_________________
+
+Some people are finding this guide does not work. I suspect this is down to the bluetooth dongle, having eliminated
+everything else in the process. The one I'm using is an Asus USB-BT400, it's tiny and supports all the current Bluetooth
+standards. If you get this to work with a different dongle can you let me know on twitter at \@approx_eng_ and I'll add
+it to this list:
+
+* Asus USB-BT400
+
 Software
 --------
 

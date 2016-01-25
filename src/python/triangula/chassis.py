@@ -111,19 +111,19 @@ def get_regular_triangular_chassis(wheel_distance, wheel_radius, max_rotations_p
 
     # Pink
     wheel_a = HoloChassis.OmniWheel(
-        position=point,
-        vector=vector,
-        max_speed=max_rotations_per_second)
+            position=point,
+            vector=vector,
+            max_speed=max_rotations_per_second)
     # Yellow
     wheel_b = HoloChassis.OmniWheel(
-        position=rotate_point(point, pi * 2 / 3),
-        vector=rotate_vector(vector, pi * 2 / 3),
-        max_speed=max_rotations_per_second)
+            position=rotate_point(point, pi * 2 / 3),
+            vector=rotate_vector(vector, pi * 2 / 3),
+            max_speed=max_rotations_per_second)
     # Green
     wheel_c = HoloChassis.OmniWheel(
-        position=rotate_point(point, pi * 4 / 3),
-        vector=rotate_vector(vector, pi * 4 / 3),
-        max_speed=max_rotations_per_second)
+            position=rotate_point(point, pi * 4 / 3),
+            vector=rotate_vector(vector, pi * 4 / 3),
+            max_speed=max_rotations_per_second)
 
     return HoloChassis(wheels=[wheel_a, wheel_b, wheel_c])
 
@@ -368,8 +368,33 @@ class Pose:
             from this Pose to the target.
         """
         return rotate_vector(
-            vector=Vector2(to_pose.position.x - self.position.x, to_pose.position.y - self.position.y),
-            angle=-self.orientation)
+                vector=Vector2(to_pose.position.x - self.position.x, to_pose.position.y - self.position.y),
+                angle=-self.orientation)
+
+    def pose_to_pose_motion(self, to_pose, time_seconds):
+        """
+        Calculates a Motion which should be applied to the current Pose to move the robot towards the target, such that
+        it should hit the target at no less than time_seconds into the future. This function must be called on any Pose
+        update, i.e. from a dead reckoning module, as it doesn't do any course planning (it would, for example, be
+        possible to calculate a single constant motion to move in an arc to the target Pose, but this would be rather
+        inefficient, better to incrementally home in on the target by repeatedly calling this function). To move as
+        fast as possible to the target, set the time to something implausibly small, then use the chassis functions
+        to limit the resultant motion to the range possible for the chassis. This would require some kind of motion
+        limit to avoid skidding and messing up the Pose calculation logic.
+
+        :param to_pose:
+            A target :class:`triangula.chassis.Pose`
+        :param time_seconds:
+            A the minimum number of seconds to transition to the target pose.
+        :return:
+            A :class:`triangula.chassis.Motion` containing the motion required to attain the target pose in the
+            specified time. This is highly likely to be impossible, in which case using the chassis functions to
+            determine the wheel power and extract the scaling factor will give the actual time (ignoring acceleration
+            limits) to transition to the target.
+        """
+        translation = self.pose_to_pose_vector(to_pose=to_pose)
+        rotation = smallest_difference(self.orientation, to_pose.orientation)
+        return Motion(translation=translation / time_seconds, rotation=rotation / time_seconds)
 
     def calculate_pose_change(self, motion, time_delta):
         """

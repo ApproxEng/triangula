@@ -60,6 +60,8 @@ class TaskManager:
                         tick += 1
                     else:
                         active_task = new_task
+                        if isinstance(active_task, ExitTask):
+                            active_task = ClearStateTask(self.home_task)
                         task_initialised = False
                         tick = 0
                 else:
@@ -227,3 +229,55 @@ class ErrorTask(Task):
         context.lcd.set_text(row1='ERROR!', row2=((' ' * 16) + str(self.exception) + (' ' * 16))[
                                                  tick % (len(str(self.exception)) + 16):])
         time.sleep(0.2)
+
+
+class ExitTask(Task):
+    """
+    Special case Task, used to indicate that the current level of the task manager has completed and should take no
+    further actions.
+    """
+
+    def __init__(self):
+        """
+        No argument constructor
+        """
+        super(ExitTask, self).__init__(task_name='Exit', requires_compass=False)
+
+    def init_task(self, context):
+        pass
+
+    def poll_task(self, context, tick):
+        pass
+
+
+class PauseTask(Task):
+    """
+    Task which will pause for at least the specified number of seconds, then yield to the specified task. If no task
+    is specified an ExitTask is used.
+    """
+
+    def __init__(self, pause_time, following_task=None):
+        """
+        Constructor
+
+        :param pause_time:
+            This task should wait for at least this number of seconds before yielding.
+        :param following_task:
+            A task to which this will yield, if this is None an instance of ExitTask will be used.
+        """
+        super(PauseTask, self).__init__(task_name='Pause', requires_compass=False)
+        self.start_time = None
+        self.task = following_task
+        if self.task is None:
+            self.task = ExitTask()
+        self.pause_time = pause_time
+
+    def init_task(self, context):
+        self.start_time = time.time()
+
+    def poll_task(self, context, tick):
+        now = time.time()
+        if now - self.start_time >= self.pause_time:
+            return self.task
+        else:
+            return None
