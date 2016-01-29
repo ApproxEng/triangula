@@ -1,9 +1,33 @@
 import time
 
-from triangula.chassis import DeadReckoning, Motion
+from euclid import Point2
+from triangula.chassis import DeadReckoning, Motion, Pose
 from triangula.dynamics import MotionLimit
-from triangula.task import Task, ExitTask
+from triangula.navigation import TaskWaypoint
+from triangula.task import Task, ExitTask, PauseTask
 from triangula.util import IntervalCheck
+
+
+class SimplePatrolExample(Task):
+    """
+    Task to test the basics of the patrol logic, just runs a single patrol to 30cm ahead, pauses, then moves sideways.
+    Hopefully. Set to not loop, so should in theory just move in an 'L' shape.
+    """
+
+    def __init__(self):
+        super(SimplePatrolExample, self).__init__(task_name='Patrol Test', requires_compass=False)
+
+    def init_task(self, context):
+        pass
+
+    def poll_task(self, context, tick):
+        """
+        Create a set of simple waypoints and return the appropriate :class:`triangula.tasks.patrol.PatrolTask` which
+        will visit them in turn then exit.
+        """
+        waypoints = [TaskWaypoint(pose=Pose(position=Point2(0, 300), orientation=0), task=PauseTask(pause_time=3)),
+                     TaskWaypoint(pose=Pose(position=Point2(300, 300), orientation=0))]
+        return PatrolTask(waypoints=waypoints)
 
 
 class PatrolTask(Task):
@@ -72,6 +96,9 @@ class PatrolTask(Task):
                         self._set_motion(motion=Motion(), context=context)
                         if self.pose_update_interval.should_run():
                             self.dead_reckoning.update_from_counts(context.arduino.get_encoder_values())
+                    # Stop full, this should already have happened but in case it didn't we don't want the
+                    # robot to be moving while it runs the intermediate tasks.
+                    context.arduino.set_motor_power(0, 0, 0)
                 # Stopped or not, we now pick the waypoint task and start running it
                 self.active_subtask = waypoint.task
                 if self.active_subtask is None:
