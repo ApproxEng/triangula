@@ -27,7 +27,7 @@ class SimplePatrolExample(Task):
         """
         waypoints = [TaskWaypoint(pose=Pose(position=Point2(0, 300), orientation=0), task=PauseTask(pause_time=3)),
                      TaskWaypoint(pose=Pose(position=Point2(300, 300), orientation=0))]
-        return PatrolTask(waypoints=waypoints, max_power=0.5)
+        return PatrolTask(waypoints=waypoints, max_power=0.4)
 
 
 class PatrolTask(Task):
@@ -84,6 +84,7 @@ class PatrolTask(Task):
         # task while at a waypoint.
         if self.pose_update_interval.should_run():
             self.dead_reckoning.update_from_counts(context.arduino.get_encoder_values())
+            print self.dead_reckoning.pose
 
         waypoint = self.waypoints[self.active_waypoint_index]
 
@@ -94,6 +95,7 @@ class PatrolTask(Task):
             if self.dead_reckoning.pose.is_close_to(target_pose, max_distance=self.linear_offset,
                                                     max_orientation_difference=self.angular_offset):
                 # Close enough, do we have to come to a complete stop first?
+                print 'Waypoint reached'
                 if waypoint.stop:
                     braking_start_time = time.time()
                     while time.time() - braking_start_time <= PatrolTask.ACCEL_TIME:
