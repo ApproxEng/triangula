@@ -4,6 +4,7 @@ import triangula.chassis
 import triangula.imu
 from abc import ABCMeta, abstractmethod
 from triangula.input import SixAxis
+import traceback
 
 
 class TaskManager:
@@ -221,6 +222,7 @@ class ErrorTask(Task):
         super(ErrorTask, self).__init__(task_name='Error', requires_compass=False)
         self.exception = exception
         print exception
+        traceback.print_exc()
 
     def init_task(self, context):
         context.lcd.set_backlight(red=10, green=0, blue=0)

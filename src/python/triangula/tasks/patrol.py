@@ -71,8 +71,8 @@ class PatrolTask(Task):
         self.active_waypoint_index = 0
         self.dead_reckoning = DeadReckoning(chassis=context.chassis, counts_per_revolution=3310)
         self.motion_limit = MotionLimit(
-                linear_acceleration_limit=context.chassis.get_max_translation_speed / PatrolTask.ACCEL_TIME,
-                angular_acceleration_limit=context.chassis.get_max_rotation_speed / PatrolTask.ACCEL_TIME)
+            linear_acceleration_limit=context.chassis.get_max_translation_speed / PatrolTask.ACCEL_TIME,
+            angular_acceleration_limit=context.chassis.get_max_rotation_speed / PatrolTask.ACCEL_TIME)
 
     def poll_task(self, context, tick):
         # Check to see whether the minimum interval between dead reckoning updates has passed
