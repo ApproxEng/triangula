@@ -40,8 +40,8 @@ class ManualMotionTask(Task):
         self._set_relative_motion(context)
         self.dead_reckoning = DeadReckoning(chassis=context.chassis, counts_per_revolution=3310)
         self.motion_limit = MotionLimit(
-                linear_acceleration_limit=context.chassis.get_max_translation_speed / ManualMotionTask.ACCEL_TIME,
-                angular_acceleration_limit=context.chassis.get_max_rotation_speed / ManualMotionTask.ACCEL_TIME)
+                linear_acceleration_limit=context.chassis.get_max_translation_speed() / ManualMotionTask.ACCEL_TIME,
+                angular_acceleration_limit=context.chassis.get_max_rotation_speed() / ManualMotionTask.ACCEL_TIME)
         self.rate_limit = RateLimit(limit_function=RateLimit.fixed_rate_limit_function(1 / ManualMotionTask.ACCEL_TIME))
         self.limit_mode = 0
 

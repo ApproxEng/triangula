@@ -142,7 +142,7 @@ class PatrolTask(Task):
         """
         Using the motion limit traction control, apply the specified motion to the chassis.
         """
-        motion = self.motion_limit.limit_and_return(motion=motion)
+        #motion = self.motion_limit.limit_and_return(motion=motion)
         wheel_speeds = context.chassis.get_wheel_speeds(motion=motion)
         speeds = wheel_speeds.speeds
         power = [speeds[i] / context.chassis.wheels[i].max_speed for i in range(0, 3)]
