@@ -27,7 +27,7 @@ class SimplePatrolExample(Task):
         """
         waypoints = [TaskWaypoint(pose=Pose(position=Point2(0, 300), orientation=0), task=PauseTask(pause_time=3)),
                      TaskWaypoint(pose=Pose(position=Point2(300, 300), orientation=0))]
-        return PatrolTask(waypoints=waypoints)
+        return PatrolTask(waypoints=waypoints, max_power=0.5)
 
 
 class PatrolTask(Task):
@@ -35,9 +35,9 @@ class PatrolTask(Task):
     A task which manages movement through a sequence of waypoints, potentially running sub-tasks at each waypoint.
     """
 
-    ACCEL_TIME = 1.0
+    ACCEL_TIME = 0.5
 
-    def __init__(self, waypoints, loop=False, linear_offset=20, angular_offset=0.1):
+    def __init__(self, waypoints, loop=False, linear_offset=20, angular_offset=0.1, max_power=1.0):
         """
         Create a new Patrol task, specifying a sequence of waypoints, whether to patrol continuously, and tolerances
         used to determine when we've hit a waypoint and should start executing the waypoint's task.
@@ -51,9 +51,12 @@ class PatrolTask(Task):
         :param linear_offset:
             Maximum linear distance away from the target Pose for each waypoint before we consider that we've hit it.
             Specified in mm, defaults to 20
-        :parm angular_offset:
+        :param angular_offset:
             Maximum angular distance away from the target Pose for each waypoint before we consider that we've hit it.
             Specified in radians, defaults to 0.1
+        :param max_power:
+            A scale applied to motor speeds being sent to the chassis, defaults to 1.0 to move as fast as possible,
+            lower values might be helpful when testing!
         """
         super(PatrolTask, self).__init__(task_name='Patrol', requires_compass=False)
         self.waypoints = waypoints
@@ -66,13 +69,14 @@ class PatrolTask(Task):
         self.motion_limit = None
         self.pose_update_interval = IntervalCheck(interval=0.1)
         self.subtask_tick = 0
+        self.max_power = max_power
 
     def init_task(self, context):
         self.active_waypoint_index = 0
         self.dead_reckoning = DeadReckoning(chassis=context.chassis, counts_per_revolution=3310)
         self.motion_limit = MotionLimit(
-            linear_acceleration_limit=context.chassis.get_max_translation_speed / PatrolTask.ACCEL_TIME,
-            angular_acceleration_limit=context.chassis.get_max_rotation_speed / PatrolTask.ACCEL_TIME)
+            linear_acceleration_limit=context.chassis.get_max_translation_speed() / PatrolTask.ACCEL_TIME,
+            angular_acceleration_limit=context.chassis.get_max_rotation_speed() / PatrolTask.ACCEL_TIME)
 
     def poll_task(self, context, tick):
         # Check to see whether the minimum interval between dead reckoning updates has passed
@@ -140,4 +144,6 @@ class PatrolTask(Task):
         wheel_speeds = context.chassis.get_wheel_speeds(motion=motion)
         speeds = wheel_speeds.speeds
         power = [speeds[i] / context.chassis.wheels[i].max_speed for i in range(0, 3)]
-        context.arduino.set_motor_power(power[0], power[1], power[2])
+        context.arduino.set_motor_power(power[0] * self.max_power,
+                                        power[1] * self.max_power,
+                                        power[2] * self.max_power)
