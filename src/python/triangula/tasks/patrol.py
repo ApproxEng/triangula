@@ -68,7 +68,7 @@ class PatrolTask(Task):
         self.active_subtask = None
         self.dead_reckoning = None
         self.motion_limit = None
-        self.pose_update_interval = IntervalCheck(interval=0.1)
+        self.pose_update_interval = IntervalCheck(interval=0.025)
         self.subtask_tick = 0
         self.max_power = max_power
 
