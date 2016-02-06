@@ -39,7 +39,7 @@ class TrianglePatrol(Task):
 
     def __init__(self):
         super(TrianglePatrol, self).__init__(task_name='Triangle Patrol', requires_compass=False)
-        self.size = 300
+        self.size = 30
 
     def init_task(self, context):
         pass
@@ -52,7 +52,7 @@ class TrianglePatrol(Task):
         p1 = Point2(0, self.size)
         p2 = rotate_point(point=p1, angle=2 * pi / 3)
         p3 = rotate_point(point=p1, angle=4 * pi / 3)
-        colours = [100, 160, 230]
+        colours = [30, 160, 200]
         waypoints = [
             TaskWaypoint(pose=Pose(position=p1, orientation=0), task=PauseTask(pause_time=1, led_hue=colours[0]),
                          stop=True),
@@ -66,14 +66,14 @@ class TrianglePatrol(Task):
                          task=PauseTask(pause_time=1, led_hue=colours[1]), stop=True),
             TaskWaypoint(pose=Pose(position=p2, orientation=radians(180)),
                          task=PauseTask(pause_time=1, led_hue=colours[1]), stop=True),
-            TaskWaypoint(pose=Pose(position=p3, orientation=240), task=PauseTask(pause_time=1, led_hue=colours[2]),
+            TaskWaypoint(pose=Pose(position=p3, orientation=radians(240)), task=PauseTask(pause_time=1, led_hue=colours[2]),
                          stop=True),
             TaskWaypoint(pose=Pose(position=p3, orientation=radians(180)),
                          task=PauseTask(pause_time=1, led_hue=colours[2]), stop=True),
             TaskWaypoint(pose=Pose(position=p3, orientation=radians(300)),
                          task=PauseTask(pause_time=1, led_hue=colours[2]), stop=True)
         ]
-        return PatrolTask(waypoints=waypoints, max_power=0.4, linear_offset=20, angular_offset=radians(5))
+        return PatrolTask(waypoints=waypoints, max_power=0.6, linear_offset=30, angular_offset=radians(10))
 
 
 class PatrolTask(Task):
@@ -81,7 +81,7 @@ class PatrolTask(Task):
     A task which manages movement through a sequence of waypoints, potentially running sub-tasks at each waypoint.
     """
 
-    ACCEL_TIME = 0.2
+    ACCEL_TIME = 0.1
 
     def __init__(self, waypoints, loop=False, linear_offset=30, angular_offset=0.2, max_power=1.0):
         """
