@@ -54,7 +54,7 @@ class TrianglePatrol(Task):
         p3 = rotate_point(point=p1, angle=4 * pi / 3)
         waypoints = [
             TaskWaypoint(pose=Pose(position=p1, orientation=0), task=PauseTask(pause_time=1), stop=True),
-            TaskWaypoint(pose=Pose(position=p1, orientation=radians(-60)), task=PauseTask(pause_time=1), stop=True),
+            TaskWaypoint(pose=Pose(position=p1, orientation=radians(300)), task=PauseTask(pause_time=1), stop=True),
             TaskWaypoint(pose=Pose(position=p1, orientation=radians(60)), task=PauseTask(pause_time=1), stop=True)
         ]
         return PatrolTask(waypoints=waypoints, max_power=0.4)
@@ -67,7 +67,7 @@ class PatrolTask(Task):
 
     ACCEL_TIME = 0.2
 
-    def __init__(self, waypoints, loop=False, linear_offset=30, angular_offset=0.3, max_power=1.0):
+    def __init__(self, waypoints, loop=False, linear_offset=30, angular_offset=0.2, max_power=1.0):
         """
         Create a new Patrol task, specifying a sequence of waypoints, whether to patrol continuously, and tolerances
         used to determine when we've hit a waypoint and should start executing the waypoint's task.
@@ -114,7 +114,7 @@ class PatrolTask(Task):
         # task while at a waypoint.
         if self.pose_update_interval.should_run():
             self.dead_reckoning.update_from_counts(context.arduino.get_encoder_values())
-            print self.dead_reckoning.pose
+            #print self.dead_reckoning.pose
 
         waypoint = self.waypoints[self.active_waypoint_index]
 
@@ -125,7 +125,7 @@ class PatrolTask(Task):
             if self.dead_reckoning.pose.is_close_to(target_pose, max_distance=self.linear_offset,
                                                     max_orientation_difference=self.angular_offset):
                 # Close enough, do we have to come to a complete stop first?
-                print 'Waypoint reached'
+                print 'Waypoint reached - pose is {}, target is {}'.format(self.dead_reckoning.pose, target_pose)
                 if waypoint.stop:
                     braking_start_time = time.time()
                     while time.time() - braking_start_time <= PatrolTask.ACCEL_TIME:
