@@ -1,10 +1,10 @@
 import time
+import traceback
 
 import triangula.chassis
 import triangula.imu
 from abc import ABCMeta, abstractmethod
 from triangula.input import SixAxis
-import traceback
 
 
 class TaskManager:
@@ -258,7 +258,7 @@ class PauseTask(Task):
     is specified an ExitTask is used.
     """
 
-    def __init__(self, pause_time, following_task=None):
+    def __init__(self, pause_time, following_task=None, led_hue=None):
         """
         Constructor
 
@@ -266,6 +266,9 @@ class PauseTask(Task):
             This task should wait for at least this number of seconds before yielding.
         :param following_task:
             A task to which this will yield, if this is None an instance of ExitTask will be used.
+        :param led_hue:
+            Optional, if specified must be an integer between 0 and 255 and requests that all LEDs on the robot
+            are set to the specified hue value.
         """
         super(PauseTask, self).__init__(task_name='Pause', requires_compass=False)
         self.start_time = None
@@ -273,9 +276,12 @@ class PauseTask(Task):
         if self.task is None:
             self.task = ExitTask()
         self.pause_time = pause_time
+        self.led_hue = led_hue
 
     def init_task(self, context):
         self.start_time = time.time()
+        if self.led_hue is not None:
+            context.arduino.set_lights(self.led_hue, 255, 60)
 
     def poll_task(self, context, tick):
         now = time.time()

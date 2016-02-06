@@ -52,12 +52,28 @@ class TrianglePatrol(Task):
         p1 = Point2(0, self.size)
         p2 = rotate_point(point=p1, angle=2 * pi / 3)
         p3 = rotate_point(point=p1, angle=4 * pi / 3)
+        colours = [100, 160, 230]
         waypoints = [
-            TaskWaypoint(pose=Pose(position=p1, orientation=0), task=PauseTask(pause_time=1), stop=True),
-            TaskWaypoint(pose=Pose(position=p1, orientation=radians(300)), task=PauseTask(pause_time=1), stop=True),
-            TaskWaypoint(pose=Pose(position=p1, orientation=radians(60)), task=PauseTask(pause_time=1), stop=True)
+            TaskWaypoint(pose=Pose(position=p1, orientation=0), task=PauseTask(pause_time=1, led_hue=colours[0]),
+                         stop=True),
+            TaskWaypoint(pose=Pose(position=p1, orientation=radians(300)),
+                         task=PauseTask(pause_time=1, led_hue=colours[0]), stop=True),
+            TaskWaypoint(pose=Pose(position=p1, orientation=radians(60)),
+                         task=PauseTask(pause_time=1, led_hue=colours[0]), stop=True),
+            TaskWaypoint(pose=Pose(position=p2, orientation=radians(120)),
+                         task=PauseTask(pause_time=1, led_hue=colours[1]), stop=True),
+            TaskWaypoint(pose=Pose(position=p2, orientation=radians(60)),
+                         task=PauseTask(pause_time=1, led_hue=colours[1]), stop=True),
+            TaskWaypoint(pose=Pose(position=p2, orientation=radians(180)),
+                         task=PauseTask(pause_time=1, led_hue=colours[1]), stop=True),
+            TaskWaypoint(pose=Pose(position=p3, orientation=240), task=PauseTask(pause_time=1, led_hue=colours[2]),
+                         stop=True),
+            TaskWaypoint(pose=Pose(position=p3, orientation=radians(180)),
+                         task=PauseTask(pause_time=1, led_hue=colours[2]), stop=True),
+            TaskWaypoint(pose=Pose(position=p3, orientation=radians(300)),
+                         task=PauseTask(pause_time=1, led_hue=colours[2]), stop=True)
         ]
-        return PatrolTask(waypoints=waypoints, max_power=0.4)
+        return PatrolTask(waypoints=waypoints, max_power=0.4, linear_offset=20, angular_offset=radians(5))
 
 
 class PatrolTask(Task):
@@ -114,7 +130,7 @@ class PatrolTask(Task):
         # task while at a waypoint.
         if self.pose_update_interval.should_run():
             self.dead_reckoning.update_from_counts(context.arduino.get_encoder_values())
-            #print self.dead_reckoning.pose
+            # print self.dead_reckoning.pose
 
         waypoint = self.waypoints[self.active_waypoint_index]
 
@@ -148,12 +164,11 @@ class PatrolTask(Task):
                 motion = self.dead_reckoning.pose.pose_to_pose_motion(to_pose=target_pose, time_seconds=0.01)
                 scale = context.chassis.get_wheel_speeds(motion=motion).scaling
                 motion = Motion(translation=motion.translation * scale, rotation=motion.rotation * scale)
-                print motion
                 self._set_motion(motion=motion, context=context)
         else:
             # We have a sub-task, should probably run it or something. Check it's not an ExitTask first though
             if isinstance(self.active_subtask, ExitTask):
-                print 'Subtask is an ExitTask, moving on'
+                print 'self.active_subtask is an ExitTask, setting to None'
                 self.active_subtask = None
             else:
                 print 'Polling subtask, tick {}'.format(self.subtask_tick)
