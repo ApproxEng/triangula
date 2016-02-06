@@ -66,14 +66,15 @@ class TrianglePatrol(Task):
                          task=PauseTask(pause_time=1, led_hue=colours[1]), stop=True),
             TaskWaypoint(pose=Pose(position=p2, orientation=radians(180)),
                          task=PauseTask(pause_time=1, led_hue=colours[1]), stop=True),
-            TaskWaypoint(pose=Pose(position=p3, orientation=radians(240)), task=PauseTask(pause_time=1, led_hue=colours[2]),
+            TaskWaypoint(pose=Pose(position=p3, orientation=radians(240)),
+                         task=PauseTask(pause_time=1, led_hue=colours[2]),
                          stop=True),
             TaskWaypoint(pose=Pose(position=p3, orientation=radians(180)),
                          task=PauseTask(pause_time=1, led_hue=colours[2]), stop=True),
             TaskWaypoint(pose=Pose(position=p3, orientation=radians(300)),
                          task=PauseTask(pause_time=1, led_hue=colours[2]), stop=True)
         ]
-        return PatrolTask(waypoints=waypoints, max_power=0.6, linear_offset=30, angular_offset=radians(10))
+        return PatrolTask(waypoints=waypoints, max_power=0.6, linear_offset=30, angular_offset=radians(10), loop=True)
 
 
 class PatrolTask(Task):
