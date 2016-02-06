@@ -25,8 +25,9 @@ class SimplePatrolExample(Task):
         Create a set of simple waypoints and return the appropriate :class:`triangula.tasks.patrol.PatrolTask` which
         will visit them in turn then exit.
         """
-        waypoints = [TaskWaypoint(pose=Pose(position=Point2(0, 300), orientation=0), task=PauseTask(pause_time=3)),
-                     TaskWaypoint(pose=Pose(position=Point2(300, 300), orientation=0))]
+        waypoints = [
+            TaskWaypoint(pose=Pose(position=Point2(0, 300), orientation=0), task=PauseTask(pause_time=3), stop=True),
+            TaskWaypoint(pose=Pose(position=Point2(300, 300), orientation=0))]
         return PatrolTask(waypoints=waypoints, max_power=0.4)
 
 
