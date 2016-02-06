@@ -86,9 +86,9 @@ def smallest_difference(a, b, max_value=2 * pi):
     if abs(mod_a - mod_b) <= max_value / 2:
         return mod_b - mod_a
     elif mod_a >= mod_b:
-        return -(mod_b + (max_value - mod_a))
+        return mod_b + (max_value - mod_a)
     else:
-        return mod_a + (max_value - mod_b)
+        return -(mod_a + (max_value - mod_b))
 
 
 def get_regular_triangular_chassis(wheel_distance, wheel_radius, max_rotations_per_second):
