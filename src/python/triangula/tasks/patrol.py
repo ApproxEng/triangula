@@ -39,7 +39,7 @@ class TrianglePatrol(Task):
 
     def __init__(self):
         super(TrianglePatrol, self).__init__(task_name='Triangle Patrol', requires_compass=False)
-        self.size = 30
+        self.size = 300
 
     def init_task(self, context):
         pass
