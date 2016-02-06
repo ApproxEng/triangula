@@ -111,19 +111,19 @@ def get_regular_triangular_chassis(wheel_distance, wheel_radius, max_rotations_p
 
     # Pink
     wheel_a = HoloChassis.OmniWheel(
-            position=point,
-            vector=vector,
-            max_speed=max_rotations_per_second)
+        position=point,
+        vector=vector,
+        max_speed=max_rotations_per_second)
     # Yellow
     wheel_b = HoloChassis.OmniWheel(
-            position=rotate_point(point, pi * 2 / 3),
-            vector=rotate_vector(vector, pi * 2 / 3),
-            max_speed=max_rotations_per_second)
+        position=rotate_point(point, pi * 2 / 3),
+        vector=rotate_vector(vector, pi * 2 / 3),
+        max_speed=max_rotations_per_second)
     # Green
     wheel_c = HoloChassis.OmniWheel(
-            position=rotate_point(point, pi * 4 / 3),
-            vector=rotate_vector(vector, pi * 4 / 3),
-            max_speed=max_rotations_per_second)
+        position=rotate_point(point, pi * 4 / 3),
+        vector=rotate_vector(vector, pi * 4 / 3),
+        max_speed=max_rotations_per_second)
 
     return HoloChassis(wheels=[wheel_a, wheel_b, wheel_c])
 
@@ -338,7 +338,7 @@ class Pose:
         """
         if self.distance_to_pose(to_pose) > max_distance:
             return False
-        elif smallest_difference(self.orientation, to_pose.orientation) > max_orientation_difference:
+        elif abs(smallest_difference(self.orientation, to_pose.orientation)) > max_orientation_difference:
             return False
         else:
             return True
@@ -368,8 +368,8 @@ class Pose:
             from this Pose to the target.
         """
         return rotate_vector(
-                vector=Vector2(to_pose.position.x - self.position.x, to_pose.position.y - self.position.y),
-                angle=-self.orientation)
+            vector=Vector2(to_pose.position.x - self.position.x, to_pose.position.y - self.position.y),
+            angle=-self.orientation)
 
     def pose_to_pose_motion(self, to_pose, time_seconds):
         """
