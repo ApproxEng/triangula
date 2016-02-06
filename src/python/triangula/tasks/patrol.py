@@ -107,21 +107,26 @@ class PatrolTask(Task):
                     context.arduino.set_motor_power(0, 0, 0)
                 # Stopped or not, we now pick the waypoint task and start running it
                 self.active_subtask = waypoint.task
+                print 'Task is {}'.format(self.active_subtask)
                 if self.active_subtask is None:
                     self.active_subtask = ExitTask()
                 self.active_subtask.init_task(context=context)
                 self.subtask_tick = 0
             else:
                 # Not close enough, move towards waypoint
+                print 'Moving towards waypoint'
                 motion = self.dead_reckoning.pose.pose_to_pose_motion(to_pose=target_pose, time_seconds=0.01)
                 scale = context.chassis.get_wheel_speeds(motion=motion).scaling
                 motion = Motion(translation=motion.translation * scale, rotation=motion.rotation * scale)
+                print motion
                 self._set_motion(motion=motion, context=context)
         else:
             # We have a sub-task, should probably run it or something. Check it's not an ExitTask first though
             if isinstance(self.active_subtask, ExitTask):
+                print 'Subtask is an ExitTask, moving on'
                 self.active_subtask = None
             else:
+                print 'Polling subtask, tick {}'.format(self.subtask_tick)
                 task_result = self.active_subtask.poll_task(context=context, tick=self.subtask_tick)
                 self.subtask_tick += 1
                 if task_result is not None:
@@ -129,6 +134,7 @@ class PatrolTask(Task):
                     self.active_subtask = task_result
                     self.active_subtask.init_task(context=context)
             if self.active_subtask is None:
+                print 'self.active_subtask is None, moving to next waypoint'
                 # A previous sub-task returned an ExitTask, so we're done here. Move to the next waypoint, or exit
                 # if we've hit all of them and we're not looping
                 self.active_waypoint_index += 1
@@ -142,7 +148,7 @@ class PatrolTask(Task):
         """
         Using the motion limit traction control, apply the specified motion to the chassis.
         """
-        #motion = self.motion_limit.limit_and_return(motion=motion)
+        motion = self.motion_limit.limit_and_return(motion=motion)
         wheel_speeds = context.chassis.get_wheel_speeds(motion=motion)
         speeds = wheel_speeds.speeds
         power = [speeds[i] / context.chassis.wheels[i].max_speed for i in range(0, 3)]
