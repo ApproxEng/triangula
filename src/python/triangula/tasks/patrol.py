@@ -38,7 +38,7 @@ class PatrolTask(Task):
 
     ACCEL_TIME = 0.2
 
-    def __init__(self, waypoints, loop=False, linear_offset=20, angular_offset=0.1, max_power=1.0):
+    def __init__(self, waypoints, loop=False, linear_offset=30, angular_offset=0.3, max_power=1.0):
         """
         Create a new Patrol task, specifying a sequence of waypoints, whether to patrol continuously, and tolerances
         used to determine when we've hit a waypoint and should start executing the waypoint's task.
@@ -68,7 +68,7 @@ class PatrolTask(Task):
         self.active_subtask = None
         self.dead_reckoning = None
         self.motion_limit = None
-        self.pose_update_interval = IntervalCheck(interval=0.025)
+        self.pose_update_interval = IntervalCheck(interval=0.001)
         self.subtask_tick = 0
         self.max_power = max_power
 
