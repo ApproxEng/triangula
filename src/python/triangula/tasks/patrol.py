@@ -1,7 +1,8 @@
 import time
+from math import pi, radians
 
 from euclid import Point2
-from triangula.chassis import DeadReckoning, Motion, Pose
+from triangula.chassis import DeadReckoning, Motion, Pose, rotate_point
 from triangula.dynamics import MotionLimit
 from triangula.navigation import TaskWaypoint
 from triangula.task import Task, ExitTask, PauseTask
@@ -28,6 +29,34 @@ class SimplePatrolExample(Task):
         waypoints = [
             TaskWaypoint(pose=Pose(position=Point2(0, 300), orientation=0), task=PauseTask(pause_time=3), stop=True),
             TaskWaypoint(pose=Pose(position=Point2(300, 300), orientation=0))]
+        return PatrolTask(waypoints=waypoints, max_power=0.4)
+
+
+class TrianglePatrol(Task):
+    """
+    Patrol in a cool triangle pattern
+    """
+
+    def __init__(self):
+        super(TrianglePatrol, self).__init__(task_name='Triangle Patrol', requires_compass=False)
+        self.size = 300
+
+    def init_task(self, context):
+        pass
+
+    def poll_task(self, context, tick):
+        """
+        Create a set of waypoints and return an appropriate :class:`triangula.tasks.patrol.PatrolTask` which will visit
+        them in sequence.
+        """
+        p1 = Point2(0, self.size)
+        p2 = rotate_point(point=p1, angle=2 * pi / 3)
+        p3 = rotate_point(point=p1, angle=4 * pi / 3)
+        waypoints = [
+            TaskWaypoint(pose=Pose(position=p1, orientation=0), task=PauseTask(pause_time=1), stop=True),
+            TaskWaypoint(pose=Pose(position=p1, orientation=radians(-60)), task=PauseTask(pause_time=1), stop=True),
+            TaskWaypoint(pose=Pose(position=p1, orientation=radians(60)), task=PauseTask(pause_time=1), stop=True)
+        ]
         return PatrolTask(waypoints=waypoints, max_power=0.4)
 
 

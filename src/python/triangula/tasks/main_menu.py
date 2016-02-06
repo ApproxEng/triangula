@@ -5,7 +5,7 @@ from triangula.task import ClearStateTask, Task
 from triangula.tasks.compass_test import CompassTestTask
 from triangula.tasks.manual_control import ManualMotionTask
 from triangula.tasks.network_info import NetworkInfoTask
-from triangula.tasks.patrol import SimplePatrolExample
+from triangula.tasks.patrol import SimplePatrolExample, TrianglePatrol
 
 
 class MenuTask(Task):
@@ -15,7 +15,7 @@ class MenuTask(Task):
 
     def __init__(self):
         super(MenuTask, self).__init__(task_name='Menu', requires_compass=False)
-        self.tasks = [ManualMotionTask(), NetworkInfoTask(), CompassTestTask(), SimplePatrolExample()]
+        self.tasks = [ManualMotionTask(), NetworkInfoTask(), CompassTestTask(), TrianglePatrol(), SimplePatrolExample()]
         self.selected_task_index = 0
 
     def init_task(self, context):
