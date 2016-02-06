@@ -36,7 +36,7 @@ class PatrolTask(Task):
     A task which manages movement through a sequence of waypoints, potentially running sub-tasks at each waypoint.
     """
 
-    ACCEL_TIME = 0.5
+    ACCEL_TIME = 0.2
 
     def __init__(self, waypoints, loop=False, linear_offset=20, angular_offset=0.1, max_power=1.0):
         """
