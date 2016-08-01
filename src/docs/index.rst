@@ -1,6 +1,11 @@
 Welcome to Triangula's Python documentation!
 ============================================
 
+.. note::
+
+    Coming to EMF2016_ ? I'll be doing a talk_ about this code, maths and all the hardware on the Sunday at 10am, come
+    along and heckle me for my poor documentation skills and over-caffeinated presentation style!
+
 This site contains documentation for Triangula, my competition entry for PiWars_ 2015.
 
 .. youtube:: https://www.youtube.com/watch?v=pnrAbDw4_EQ
@@ -22,31 +27,14 @@ controller with your project.
     config
     sixaxis
     api
-
-Just to show we can do graphs and maths
----------------------------------------
-
-.. graphviz::
-
-    digraph G {
-        a->b->c;
-        b->d;
-        a [fillcolor=pink,style=filled];
-        c [label="hello world"]
-        d [];
-        e [];
-    }
-
-Some inline maths, for example :math:`a^2 + b^2 = c^2` or :math:`\sum_{i=1}^{10} t_i`
-
-.. math:: e^{i\pi} + 1 = 0
-    :label: euler
-
-Euler's identity, equation :eq:`euler`, was elected one of the most
-beautiful mathematical formulas.
+    maths
 
 .. _GitHub: https://github.com/basebot/triangula
 
 .. _PiWars: http://piwars.org
 
 .. _Holonomic: https://en.wikipedia.org/wiki/Holonomic_(robotics)
+
+.. _EMF2016: https://www.emfcamp.org
+
+.. _talk: https://www.emfcamp.org/line-up/2016/11-holonomic-robots-and-why-you-should-build-one

@@ -33,7 +33,15 @@ waypoint in sequence, optionally coming to a complete stop at the waypoint befor
 returns an :class:`triangula.task.ExitTask` at which point it proceeds to the next waypoint. The route can optionally
 loop to run continuously.
 
-.. autoclass:: triangula.task.patrol.PatrolTask
+.. autoclass:: triangula.tasks.patrol.PatrolTask
+    :members:
+
+There are a couple of example tasks within the ``patrol`` module:
+
+.. autoclass:: triangula.tasks.patrol.SimplePatrolExample
+    :members:
+
+.. autoclass:: triangula.tasks.patrol.TrianglePatrol
     :members:
 
 triangula.tasks.network_info: Network Info
