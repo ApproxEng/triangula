@@ -365,3 +365,111 @@ This allows us to concisely state three (in this case) simultaneous linear equat
     This is then amenable to numeric solving, in Triangula's case we use the NumPy library, which also includes
     functions to handle the case where we have more wheels than 3, although obviously in this particular instance we
     don't need to worry (Triangula is smart and fast, but she's thus far been incapable of spontaneously growing wheels).
+
+Pose change from Motion
+-----------------------
+
+Once we have a known :class:`triangula.chassis.Motion` we can work out the change in our :class:`triangula.chassis.Pose`
+assuming the motion remains constant for a known time. The first stage is to understand that a constant motion
+represents movement around a circle - this might not seem immediately obvious, but imagine what will happen if you walk
+forwards (or in fact in any direction) and, every step you take, you turn slightly. You will walk in a circle, the more
+you turn and the smaller your steps the smaller the circle, turning less each step and taking longer strides results in
+a larger circle.
+
+If we know we're moving in a circle, it's easy to work out the change in our position - we just need to know two things:
+
+1. How big is the circle?
+2. Where is the centre of the circle?
+
+If we can work out these two things we can rotate our current location around the centre of the circle to get our new
+location. The proportion of the circle we travel around, and therefore the angle we need to rotate by, is determined by
+the angular velocity component of the motion.
+
+First we need to work out the radius of the circle. We know that :math:`circ=2\pi{}r`. We also know, from :math:`m_\theta`
+that in one second we'll travel around :math:`\frac{m_\theta}{2\pi}` of the circumference of the circle. Our total distance
+travelled in one second is therefore :math:`\frac{m_\theta}{2\pi}\times2\pi r=m_\theta r`
+
+We know the total distance travelled in one second from the linear portion of :math:`M`, so we can make these equal and
+solve for :math:`r` as follows:
+
+.. math::
+    :nowrap:
+
+    \begin{align}
+    m_\theta r & =\left|\begin{pmatrix}m_x\\m_y\end{pmatrix}\right| \\
+    \\
+    m_\theta r & =\sqrt{m_x^2+m_y^2} \\
+    \\
+    r & =\frac{\sqrt{m_x^2+m_y^2}}{m_\theta}
+    \end{align}
+
+Now we need to find the centre of the circle. We can do this easily, because we know that when moving around a circle
+the vector from our location to the centre of the circle is at right angles to the direction of our motion. There's one
+slight catch here though - if we're turning to the right (:math:`m_\theta > 0`) our centre point should be to our right,
+which we can get by rotating our motion vector 90 degrees clockwise. If, however, we're turning to the left we need to
+have our centre point to our left as well, rotating our motion vector 90 degrees counter-clockwise. For complete correctness
+we also need to handle the case where :math:`m_\theta = 0`), corresponding to motion in a straight line with no angular
+component.
+
+.. note::
+
+    Be very careful here! Our motion is expressed in robot coordinates, but we need everything to be in world coordinates
+    if we're rotating a location around another point. So, before we use any of our motion vectors we need to rotate the
+    entire motion by the inverse of the pose orientation.
+
+    In the remainder of this section, when we refer to components of the motion i.e. :math:`m_y` these refer to the
+    transformed version of the motion, i.e the motion as observed in the world, *not* the motion from the perspective
+    of the robot. In the code the first thing we do is to rotate the motion vector by the negative of the orientation
+    part of the current pose.
+
+So, to get the position of the centre of the circle about which we're moving we need to multiply our right angle unit vector
+(whether clockwise or counterclockwise) by the radius, to get a vector in the same direction with length :math:`r`.
+
+.. math::
+    :nowrap:
+
+    \begin{align}
+    \widehat R & =\left\{\begin{array}{l}m_\theta>0\;:\;\frac{\begin{pmatrix}m_y\\-m_x\end{pmatrix}}{\sqrt{m_x^2+m_y^2}}\\m_\theta<0\;:\;\frac{\begin{pmatrix}-m_y\\m_x\end{pmatrix}}{\sqrt{m_x^2+m_y^2}}\end{array}\right. \\
+    \\
+    \overrightarrow R=\widehat Rr & =\left\{\begin{array}{l}m_\theta>0\;:\;\frac{\begin{pmatrix}m_y\\-m_x\end{pmatrix}}{m_\theta}\\m_\theta<0\;:\;\frac{\begin{pmatrix}-m_y\\m_x\end{pmatrix}}{m_\theta}\end{array}\right.
+    \end{align}
+
+So, when :math:`m_\theta` is non-zero we rotate our current location around the point obtained by adding
+:math:`\overrightarrow R` to that location by :math:`m_\theta` radians.
+
+To rotate a point :math:`P` around a centre point :math:`C` clockwise by :math:`\theta` radians we apply the following
+transformation:
+
+.. math::
+    :nowrap:
+
+    \begin{align}
+    rotate(P,\;C,\;\theta)=\begin{bmatrix}p'_x\\p'_y\end{bmatrix}=\begin{bmatrix}p_x-c_x\\p_y-c_y\end{bmatrix}\begin{bmatrix}\cos(\theta)&\sin(\theta)\\-\sin(\theta)&\cos(\theta)\end{bmatrix}+\begin{bmatrix}c_x\\\;c_\mathrm y\end{bmatrix}
+    \end{align}
+
+.. hint::
+
+    To obtain the result of motion :math:`M` on pose :math:`P` after time :math:`t`:
+
+    * If :math:`m_\theta` is non-zero the new pose :math:`P'` is found by rotating the current pose about the centre
+      point :math:`\begin{pmatrix}p_x+r_x\\p_y+r_y\end{pmatrix}` as defined above, by :math:`m_\theta{}t` radians.
+    * If :math:`m_\theta` is zero the new pose :math:`P'` is found by adding the (transformed) linear part of the motion
+      multiplied by :math:`t` to the position part of the original pose.
+
+In Python, using a helpful vector library, the code is actually relatively simple:
+
+.. code-block:: python
+
+    # Total delta in orientation angle over the time interval
+    orientation_delta = motion.rotation * time_delta
+    # Scaled translation vector rotated into world coordinate space (motion uses robot space)
+    translation_vector_world = rotate_vector(motion.translation, self.orientation) * time_delta
+
+    if orientation_delta == 0:
+        # No orientation, trivially add the rotated, scaled, translation vector to the current pose
+        return self.translate(translation_vector_world)
+    else:
+        centre_of_rotation = self.position + translation_vector_world.cross() / orientation_delta
+        ':type : euclid.Point2'
+        final_position = rotate_point(self.position, angle=orientation_delta, origin=centre_of_rotation)
+        return Pose(position=final_position, orientation=self.orientation + orientation_delta)
