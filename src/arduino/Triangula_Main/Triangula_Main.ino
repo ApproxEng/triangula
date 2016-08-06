@@ -1,4 +1,8 @@
 
+#include <FastLED.h>
+#include <pixeltypes.h>
+
+
 // Comment this out to entirely disable the motor control functions. Handy when testing and you
 // really don't want the robot to vanish off into the distance mid-test.
 #define ENABLE_MOTOR_FUNCTIONS
@@ -8,8 +12,6 @@
    for each motor, these are converted to values in the range -128 to 127 and sent to the motor drivers.
    Also handles lighting and reporting of encoder values in response to a bulk data request.
 */
-#include <Adafruit_NeoPixel.h>
-#include "Triangula_NeoPixel.h"
 #include <Wire.h>
 #ifdef ENABLE_MOTOR_FUNCTIONS
 #include <Sabertooth.h>
@@ -22,11 +24,16 @@
 #define MOTOR_SPEED_SET 0x20
 #define SET_SOLID_COLOUR 0x21
 #define ENCODER_READ 0x22
+#define UPDATE_LED_GROUP 0x23
 
 // Register map array size in bytes
 #define REG_MAP_SIZE   6
 // Maximum length of a command
-#define MAX_SENT_BYTES 5
+#define MAX_SENT_BYTES 26
+
+// Number of neopixels
+#define NUM_LEDS 48
+#define LED_DATA_PIN 6
 
 // Track absolute encoder values, these are unsigned ints and can (and will) roll over. The difference()
 // function handles these cases properly. Note that these are volatile as they're updated on pin change
@@ -45,10 +52,10 @@ Sabertooth ST[3] = { Sabertooth(130), Sabertooth(129), Sabertooth(128) };
 #endif
 
 // Lights
-Triangula_NeoPixel pixels = Triangula_NeoPixel();
+CRGB leds[NUM_LEDS];
 
 void setup() {
-  pixels.begin();
+  FastLED.addLeds<NEOPIXEL, LED_DATA_PIN>(leds, NUM_LEDS);
   Serial.begin(9600);
   Wire.begin(SLAVE_ADDRESS);
   Wire.onRequest(requestEvent);
@@ -80,8 +87,8 @@ void setup() {
     ST[i].motor(0);
   }
 #endif
-  pixels.setSolidColour(170, 255, 60);
-  pixels.show();
+  setSolidColour(170, 255, 60);
+  FastLED.show();
 }
 
 
@@ -101,15 +108,16 @@ void loop() {
           }
           for (int i = 0; i < 3; i++) {
             ST[i].motor(((int)(receivedCommands[i + 1])) - 128);
+            setColoursForWheelSpeed(i, (int)(receivedCommands[i + 1]), HUE_PURPLE, HUE_ORANGE);
           }
-          setColours(registerMap, REG_MAP_SIZE, 8, 0);
+          FastLED.show();
         }
 #endif
         break;
       case SET_SOLID_COLOUR:
         if (checkCommand(3)) {
-          pixels.setSolidColour(receivedCommands[1], receivedCommands[2], receivedCommands[3]);
-          pixels.show();
+          setSolidColour(receivedCommands[1], receivedCommands[2], receivedCommands[3]);
+          FastLED.show();
         }
         break;
       case ENCODER_READ:
@@ -121,6 +129,15 @@ void loop() {
         encoderData[5] =  pos_a & 0xff;
         encoderIndex = 0;
         break;
+      case UPDATE_LED_GROUP:
+        if (checkCommand(26)) {
+          int pixelOffset = 0;
+          for (int pixel = receivedCommands[1]; pixel < (receivedCommands[1] + receivedCommands[2]); pixel++) {
+            int hue = receivedCommands[3 + pixelOffset * 3];
+            int sat = receivedCommands[4 + pixelOffset * 3];
+            int val = receivedCommands[5 + pixelOffset * 3];
+          }
+        }
       default:
 #ifdef ENABLE_MOTOR_FUNCTIONS
         // Unknown command, stop the motors.
@@ -128,8 +145,8 @@ void loop() {
           ST[i].motor(0);
         }
 #endif
-        pixels.setSolidColour(0, 255, 50);
-        pixels.show();
+        setSolidColour(0, 255, 50);
+        FastLED.show();
         break;
     }
   }
@@ -215,17 +232,37 @@ ISR (PCINT0_vect) {
   encoder_c = c;
 }
 
-// Set colours based on the signal received from the Pi
-void setColours(byte hues[], int hueCount, int pixelsPerValue, int fromPixel) {
-  int pixel = fromPixel;
-  for (int i = 0; i < hueCount; i++) {
-    uint32_t colour_a = pixels.hsvToColour(hues[i], 255, 150);
-    uint32_t colour_b = pixels.hsvToColour(hues[(i + 1) % hueCount], 255, 150);
-    for (int j = 0; j < pixelsPerValue; j++) {
-      uint32_t colour = pixels.interpolate(colour_a, colour_b, ((float)j) / ((float)pixelsPerValue));
-      pixels.setPixelColor(pixel++, colour);
+void setSolidColour(int hue, int saturation, int value) {
+  for (int pixel = 0; pixel < NUM_LEDS; pixel++) {
+    leds[pixel] = CHSV(hue, saturation, value);
+  }
+}
+
+// Set pylon colours based on speed
+// wheelSpeed is 0-255, where 0 is full speed one way, 255 full speed the other
+// pylon is [0,1,2] depending on which wheel we're creating the lighting for
+void setColoursForWheelSpeed(int pylon, int wheelSpeed, int hue1, int hue2) {
+  if (wheelSpeed >= 128) {
+    int ledsLit = (wheelSpeed - 112) >> 4;
+    for (int n = 0; n < 8; n++) {
+      if (n <= ledsLit) {
+        leds[pylon * 8 + n] = CHSV(hue1, 200, 200);
+      }
+      else {
+        leds[pylon * 8 + n] = CHSV(0, 0, 0);
+      }
     }
   }
-  pixels.show();
+  else {
+    int ledsLit = (143 - wheelSpeed) >> 4;
+    for (int n = 0; n < 8; n++) {
+      if ((8 - n) <= ledsLit) {
+        leds[pylon * 8 + n] = CHSV(hue2, 200, 200);
+      }
+      else {
+        leds[pylon * 8 + n] = CHSV(0, 0, 0);
+      }
+    }
+  }
 }
 
