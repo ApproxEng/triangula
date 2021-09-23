@@ -1,6 +1,3 @@
-import fcntl
-import socket
-import struct
 from time import time, sleep as time_sleep
 
 
@@ -66,46 +63,3 @@ class IntervalCheck:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.last_time = time()
-
-
-def in_range(value, min_value, max_value):
-    """
-    Clamps a value to be within the specified range. If the value is None then None is returned. If either
-    max_value or min_value are None they aren't used.
-
-    :param value:
-        The value
-    :param min_value:
-        Minimum allowed value
-    :param max_value:
-        Maximum allowed value
-    """
-    if value is None:
-        return None
-    elif value < min_value and min_value is not None:
-        return min_value
-    elif value > max_value and max_value is not None:
-        return max_value
-    return value
-
-
-def get_ip_address(ifname='wlan0'):
-    """
-    Get a textual representation of the IP address for the specified interface, defaulting to wlan0 to pick
-    up our wireless connection if we have one.
-
-    :param ifname:
-        Name of the interface to query, defaults to 'wlan0'
-
-    :return:
-        Textual representation of the IP address
-    """
-    try:
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        return socket.inet_ntoa(fcntl.ioctl(
-            s.fileno(),
-            0x8915,  # SIOCGIFADDR
-            struct.pack('256s', ifname[:15])
-        )[20:24])
-    except:
-        return '--.--.--'
