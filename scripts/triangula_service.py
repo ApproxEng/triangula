@@ -6,12 +6,12 @@ Triangula top level service script
 from signal import signal, SIGINT, SIGTERM
 from sys import exit
 
-from triangula.arduino import Arduino
-from triangula.chassis import get_regular_triangular_chassis
-from triangula.input import SixAxisResource
-from triangula.lcd import LCD
-from triangula.task import TaskManager
-from triangula.tasks.main_menu import MenuTask
+from triangula_unit.arduino import Arduino
+from triangula_unit.chassis import get_regular_triangular_chassis
+from triangula_unit.input import SixAxisResource
+from triangula_unit.hardware import LCD
+from triangula_unit.task import TaskManager
+from triangula_unit.tasks.main_menu import MenuTask
 
 
 def get_shutdown_handler(message=None):

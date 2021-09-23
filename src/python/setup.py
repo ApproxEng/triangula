@@ -1,4 +1,5 @@
 __author__ = 'tom'
+
 from setuptools import setup
 
 # Makes use of the sphinx and sphinx-pypi-upload packages. To build for local development
@@ -11,15 +12,14 @@ setup(
     name='triangula',
     version='0.3.1',
     description='Code for Triangula',
-    classifiers=['Programming Language :: Python :: 2.7'],
+    classifiers=['Programming Language :: Python :: 3.8'],
     url='https://github.com/tomoinn/triangula/',
     author='Tom Oinn',
     author_email='tomoinn@gmail.com',
     license='ASL2.0',
     packages=['triangula'],
-    install_requires=['evdev==0.5.0', 'euclid==0.1', 'pyserial==2.7', 'numpy==1.10.1'],
+    install_requires=['approxeng.input', 'approxeng.task', 'pyserial',
+                      'approxeng.holochassis', 'approxeng.hwsupport', 'smbus2', 'euclid'],
     include_package_data=True,
-    test_suite='nose.collector',
-    tests_require=['nose'],
     dependency_links=[],
     zip_safe=False)

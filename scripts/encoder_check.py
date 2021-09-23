@@ -1,9 +1,9 @@
-import triangula.arduino
-import triangula.lcd
+import triangula_unit.arduino
+import triangula_unit.hardware
 from time import sleep
 
-arduino = triangula.arduino.Arduino(i2c_delay=0.002)
-lcd = triangula.lcd.LCD()
+arduino = triangula_unit.arduino.Arduino(i2c_delay=0.002)
+lcd = triangula_unit.hardware.LCD()
 lcd.cursor_off()
 lcd.set_backlight(red=8, green=4, blue=4)
 

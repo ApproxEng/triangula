@@ -1,7 +1,7 @@
 from math import radians, pi, sqrt
 
 from euclid import Vector2, Point2
-from triangula.chassis import get_regular_triangular_chassis, Motion, Pose, rotate_vector
+from triangula_unit.chassis import get_regular_triangular_chassis, Motion, Pose, rotate_vector
 
 chassis = get_regular_triangular_chassis(
     wheel_distance=290,

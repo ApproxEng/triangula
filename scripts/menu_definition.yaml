@@ -1,0 +1,5 @@
+- name: main_menu
+  title: Main Menu
+  items:
+    - title: Manual Motion
+      task: manual_motion
